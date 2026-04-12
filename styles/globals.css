@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --font-sans: "Segoe UI Variable Text", Aptos, "Trebuchet MS", sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --canvas: 22 22 28;
+  --panel: 29 29 38;
+  --panel-soft: 37 38 50;
+  --line: 52 54 72;
+  --text: 241 244 255;
+  --muted: 159 164 191;
+  --accent: 249 115 22;
+  --accent-soft: 56 39 25;
+  --info: 92 165 255;
+  --success: 82 210 115;
+  --warn: 245 185 66;
+  --danger: 255 107 129;
+}
+
+* {
+  border-color: rgb(var(--line));
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.14), transparent 22%),
+    radial-gradient(circle at top right, rgba(92, 165, 255, 0.12), transparent 18%),
+    rgb(var(--canvas));
+  color: rgb(var(--text));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at center, black, transparent 85%);
+  opacity: 0.35;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(151, 156, 187, 0.32);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+.dashboard-shell {
+  @apply min-h-screen bg-transparent;
+}
+
+.glass-panel {
+  @apply rounded-3xl border border-white/10 bg-panel/90 shadow-panel backdrop-blur-xl;
+}
+
+.panel {
+  @apply rounded-2xl border border-white/10 bg-panel/90;
+}
+
+.panel-muted {
+  @apply rounded-2xl border border-white/10 bg-panel-2/90;
+}
+
+.eyebrow {
+  @apply text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400;
+}
+
+.metric-value {
+  @apply text-3xl font-semibold tracking-tight text-white;
+}
+
+.page-title {
+  @apply text-2xl font-semibold tracking-tight text-white md:text-3xl;
+}
+
+.page-copy {
+  @apply text-sm text-slate-400 md:text-base;
+}
+
+.input-surface {
+  @apply h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white placeholder:text-slate-500 focus:border-slate-500 focus:bg-white/10 focus:ring-0;
+}
+
+.table-scroll {
+  scrollbar-gutter: stable both-edges;
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 260ms ease-out both;
+}
