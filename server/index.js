@@ -145,20 +145,21 @@ function normalizeIncomingEvent(event, context, blocklistMap) {
   const occurredAt = event.occurred_at ? new Date(event.occurred_at).toISOString() : new Date().toISOString();
   const metadata = typeof event.metadata === "object" && event.metadata !== null ? event.metadata : {};
   const blocklistMatch = domain ? blocklistMap.get(domain) ?? null : null;
+  const normalizedEventType = String(event.event_type || "navigation").trim().toLowerCase();
 
   return {
     id,
     orgId: context.orgId,
     employeeId: event.employee_id || context.employeeId || null,
     deviceId: event.device_id || context.deviceId || null,
-    eventType: String(event.event_type || "navigation").trim().toLowerCase(),
+    eventType: normalizedEventType,
     url,
     domain,
     pageTitle: event.page_title ? String(event.page_title).slice(0, 512) : null,
     dwellSeconds: Number.isFinite(Number(event.dwell_seconds)) ? Number(event.dwell_seconds) : null,
-    category: deriveCategory(domain, event.event_type, metadata),
+    category: deriveCategory(domain, normalizedEventType, metadata),
     riskLevel: deriveRiskLevel({
-      eventType: String(event.event_type || "").trim().toLowerCase(),
+      eventType: normalizedEventType,
       metadata,
       isBlockedDomain: Boolean(blocklistMatch),
       occurredAt
@@ -184,7 +185,11 @@ async function startServer() {
     }
 
     const blocklist = await store.getBlocklist(orgId);
-    const blocklistMap = new Map(blocklist.map((entry) => [String(entry.domain).toLowerCase(), entry]));
+    const blocklistMap = new Map(
+      blocklist
+        .filter((entry) => entry?.domain)
+        .map((entry) => [String(entry.domain).trim().toLowerCase(), entry])
+    );
     const deduped = [];
     const seenIds = new Set();
     for (const rawEvent of incomingEvents) {
@@ -480,7 +485,6 @@ async function startServer() {
 
   app.get("/api/activity/timeline", verifyToken, requireUserOrAdmin, async (req, res) => {
     try {
-      console.log(req)
       return res.json({
         items: await store.getActivityTimeline(req.user.org_id, {
           employeeId: req.query.employee_id,

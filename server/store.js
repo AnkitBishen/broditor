@@ -387,32 +387,32 @@ class PostgresStore {
   }
 
   async getActivityTimeline(orgId, filters = {}) {
-    const clauses = ["org_id = $1"];
+    const clauses = ["e.org_id = $1"];
     const values = [orgId];
 
     if (filters.employeeId) {
       values.push(filters.employeeId);
-      clauses.push(`employee_id = $${values.length}`);
+      clauses.push(`e.employee_id = $${values.length}`);
     }
 
     if (filters.category) {
       values.push(filters.category);
-      clauses.push(`category = $${values.length}`);
+      clauses.push(`e.category = $${values.length}`);
     }
 
     if (filters.riskLevel) {
       values.push(filters.riskLevel);
-      clauses.push(`risk_level = $${values.length}`);
+      clauses.push(`e.risk_level = $${values.length}`);
     }
 
     if (filters.dateFrom) {
       values.push(filters.dateFrom);
-      clauses.push(`occurred_at >= $${values.length}`);
+      clauses.push(`e.occurred_at >= $${values.length}`);
     }
 
     if (filters.dateTo) {
       values.push(filters.dateTo);
-      clauses.push(`occurred_at <= $${values.length}`);
+      clauses.push(`e.occurred_at <= $${values.length}`);
     }
 
     const result = await this.pool.query(

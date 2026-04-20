@@ -11,7 +11,7 @@ function deriveDomain(rawUrl) {
 }
 
 function deriveCategory(domain = "", eventType = "", metadata = {}) {
-  const normalized = domain.toLowerCase();
+  const normalized = String(domain || "").toLowerCase();
 
   if (metadata.download_bytes) {
     return "download";
