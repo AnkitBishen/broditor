@@ -7,12 +7,24 @@ import { activityTrend, domainUsage, timeSpent, weeklyTrend } from "@/lib/mock-d
 export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <p className="eyebrow">Usage Intelligence</p>
+      <div className="space-y-5">
+        <div className="section-breadcrumb">
+          <span>Browser Audit</span>
+          <span>/</span>
+          <strong>Analytics</strong>
+        </div>
+        <div className="space-y-3">
         <h1 className="page-title">Analytics</h1>
         <p className="page-copy max-w-3xl">
           Compare time-on-domain patterns, weekly movement, and browser workload concentration across monitored teams.
         </p>
+        </div>
+        <div className="page-tabs">
+          <span className="page-tab page-tab-active">Overview</span>
+          <span className="page-tab">Top domains</span>
+          <span className="page-tab">Heatmap</span>
+          <span className="page-tab">Weekly trends</span>
+        </div>
       </div>
 
       <div className="grid gap-6 2xl:grid-cols-[1.35fr_0.95fr]">

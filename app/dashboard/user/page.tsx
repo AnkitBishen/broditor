@@ -24,13 +24,25 @@ export default async function UserDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <p className="eyebrow">User Dashboard</p>
+      <div className="space-y-5">
+        <div className="section-breadcrumb">
+          <span>{data.user.companyName}</span>
+          <span>/</span>
+          <strong>Overview</strong>
+        </div>
+        <div className="space-y-3">
         <h1 className="page-title">Welcome back, {data.user.name}</h1>
         <p className="page-copy max-w-3xl">
           This view is scoped to your authenticated session and tenant. It surfaces your current role and protected
           access rights inside {data.user.companyName}.
         </p>
+        </div>
+        <div className="page-tabs">
+          <span className="page-tab page-tab-active">Overview</span>
+          <span className="page-tab">Permissions</span>
+          <span className="page-tab">Profile</span>
+          <span className="page-tab">Security</span>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">

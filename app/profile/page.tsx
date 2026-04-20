@@ -13,6 +13,12 @@ export default async function ProfilePage() {
 
   return (
     <div className="space-y-6">
+      <div className="section-breadcrumb">
+        <span>Browser Audit</span>
+        <span>/</span>
+        <strong>Profile</strong>
+      </div>
+
       <div className="glass-panel overflow-hidden p-6 md:p-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
@@ -25,11 +31,18 @@ export default async function ProfilePage() {
                 <Badge variant={currentUser.role === "admin" ? "role-admin" : "role-viewer"}>{currentUser.role}</Badge>
               </div>
               <p className="text-slate-300 capitalize">{currentUser.role} access</p>
-              <p className="text-sm text-slate-400">{currentUser.email} • {currentUser.companyName}</p>
+              <p className="text-sm text-slate-400">{currentUser.email} - {currentUser.companyName}</p>
             </div>
           </div>
           <Badge variant="success">Secure session active</Badge>
         </div>
+      </div>
+
+      <div className="page-tabs">
+        <span className="page-tab page-tab-active">Overview</span>
+        <span className="page-tab">Permissions</span>
+        <span className="page-tab">Session security</span>
+        <span className="page-tab">Focus areas</span>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -39,7 +52,7 @@ export default async function ProfilePage() {
               ? ["Create company users", "View company dashboards", "Manage tenant access", "Access shared analytics"]
               : ["View personal access", "Use shared dashboards", "Access profile", "Access settings"]
             ).map((item) => (
-              <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+              <div key={item} className="rounded-[14px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
                 {item}
               </div>
             ))}

@@ -61,18 +61,39 @@ export function AdminDashboardClient({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <p className="eyebrow">Admin Dashboard</p>
-        <h1 className="page-title">{data.company.name}</h1>
-        <p className="page-copy max-w-3xl">
-          Manage company users, review tenant access, and confirm that role-based authorization is scoped correctly for
-          this workspace.
-        </p>
+      <div className="space-y-5">
+        <div className="section-breadcrumb">
+          <span>{data.company.name}</span>
+          <span>/</span>
+          <strong>Overview</strong>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-4">
+            <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[18px] bg-[#f4f5f7] text-2xl font-bold text-[#fc6f41]">
+              BA
+            </div>
+            <div className="space-y-2">
+              <h1 className="page-title">{data.company.name}</h1>
+              <p className="page-copy max-w-3xl">
+                Central workspace for tenant access, employee coverage, role assignments, and organization-wide browser
+                monitoring operations.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="page-tabs">
+          <span className="page-tab page-tab-active">Overview</span>
+          <span className="page-tab">Members</span>
+          <span className="page-tab">Policies</span>
+          <span className="page-tab">Activity</span>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
         {data.stats.map((metric) => (
-          <Card key={metric.label} className="bg-gradient-to-br from-white/[0.05] to-transparent">
+          <Card key={metric.label} className="bg-gradient-to-br from-white/[0.03] to-transparent">
             <div className="space-y-3">
               <p className="eyebrow">{metric.label}</p>
               <p className="metric-value">{metric.value}</p>
@@ -94,7 +115,16 @@ export function AdminDashboardClient({
         ))}
       </div>
 
-      <Card title="Company users" eyebrow={`${data.company.totalUsers} tenant members`}>
+      <Card
+        title="Company users"
+        eyebrow={`${data.company.totalUsers} tenant members`}
+        action={
+          <div className="flex items-center gap-2">
+            <div className="gitlab-filter-chip">Role</div>
+            <div className="gitlab-filter-chip">Created date</div>
+          </div>
+        }
+      >
         <Table<CompanyUser> columns={columns} data={data.users} pageSize={6} />
       </Card>
     </div>

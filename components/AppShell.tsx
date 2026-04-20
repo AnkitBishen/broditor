@@ -27,7 +27,7 @@ export function AppShell({
   }
 
   return (
-    <div className="dashboard-shell relative pb-4">
+    <div className="dashboard-shell relative min-h-screen overflow-x-hidden">
       <Sidebar
         currentUser={user}
         collapsed={sidebarCollapsed}
@@ -39,12 +39,16 @@ export function AppShell({
       <div
         className={cx(
           "transition-[padding] duration-300",
-          sidebarCollapsed ? "lg:pl-[120px]" : "lg:pl-[316px]"
+          sidebarCollapsed ? "lg:pl-[76px]" : "lg:pl-[280px]"
         )}
       >
-        <div className="space-y-6 p-4 md:p-5">
+        <div className="px-3 pb-4 md:px-4">
           <Navbar onOpenSidebar={() => setSidebarOpen(true)} />
-          <main className="min-h-[calc(100vh-8rem)]">{children}</main>
+          <main className="pt-3">
+            <section className="glass-panel min-h-[calc(100vh-6.5rem)] overflow-hidden px-5 py-5 md:px-6 md:py-6">
+              {children}
+            </section>
+          </main>
         </div>
       </div>
     </div>
