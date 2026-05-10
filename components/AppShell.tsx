@@ -9,7 +9,7 @@ import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
 import { cx } from "@/lib/utils";
 
-const publicRoutes = ["/", "/login", "/register"];
+const publicRoutes = ["/", "/about-us", "/docs", "/help", "/pricing", "/login", "/register"];
 
 export function AppShell({
   children

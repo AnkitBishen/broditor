@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   ChevronRight,
+  Download,
   HandHelping,
   LayoutGrid,
   PanelLeftClose,
@@ -61,32 +62,34 @@ export function Sidebar({
   const router = useRouter();
   const dashboardHref = currentUser ? getDefaultDashboardPath(currentUser.role) : "/login";
 
-  const groups = useMemo<SidebarGroup[]>(
-    () => [
+  const groups = useMemo<SidebarGroup[]>(() => {
+    const dashboardItems = [
+      { href: dashboardHref, label: "Overview" },
+      ...(currentUser?.role === "admin" ? [{ href: "/team", label: "Teams" }] : []),
+      { href: "/analytics", label: "Analytics" },
+      ...(currentUser?.role === "admin" ? [{ href: "/extension-setup", label: "Extension setup" }] : [])
+    ];
+
+    return [
+      // {
+      //   key: "workspace",
+      //   label: currentUser?.companyName ?? "Browser Audit",
+      //   icon: LayoutGrid,
+      //   href: dashboardHref
+      // },
       {
-        key: "workspace",
-        label: currentUser?.companyName ?? "Browser Audit",
-        icon: LayoutGrid,
-        href: dashboardHref
-      },
-      {
-        key: "manage",
-        label: "Manage",
+        key: "dashboard",
+        label: "Dashboard",
         icon: UsersRound,
-        items: [
-          { href: dashboardHref, label: "Overview" },
-          { href: "/team", label: "Members" },
-          // { href: "/profile", label: "Profile" }
-        ]
+        items: dashboardItems
       },
       {
-        key: "plan",
-        label: "Plan",
+        key: "events",
+        label: "Events",
         icon: LayoutGrid,
         items: [
           { href: "/activity", label: "Activity" },
-          { href: "/alerts", label: "Alerts" },
-          { href: "/analytics", label: "Analytics" }
+          { href: "/alerts", label: "Alerts" }
         ]
       },
       // {
@@ -126,9 +129,18 @@ export function Sidebar({
       //     { href: "/alerts", label: "Reports" }
       //   ]
       // }
-    ],
-    [currentUser, dashboardHref]
-  );
+      ...(currentUser?.role === "admin"
+        ? [
+            {
+              key: "extension",
+              label: "Extension",
+              icon: Download,
+              href: "/extension-setup"
+            }
+          ]
+        : [])
+    ];
+  }, [currentUser, dashboardHref]);
 
   const [expandedKey, setExpandedKey] = useState<string | null>("plan");
   const activeManagedKey = useMemo(() => {
@@ -164,7 +176,7 @@ export function Sidebar({
         <div className={cx("border-b border-white/[0.08] px-3 py-4", collapsed && "px-2")}>
           {!collapsed ? (
             <>
-              <p className="px-2 text-[11px] font-semibold text-slate-300">Group</p>
+              {/* <p className="px-2 text-[11px] font-semibold text-slate-300">Group</p> */}
               <Link
                 href={dashboardHref}
                 className="mt-3 flex items-center gap-3 rounded-[14px] bg-[#44556f] px-3 py-3 text-white"

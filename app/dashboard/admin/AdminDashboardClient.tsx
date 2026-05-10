@@ -62,11 +62,11 @@ export function AdminDashboardClient({
   return (
     <div className="space-y-6">
       <div className="space-y-5">
-        <div className="section-breadcrumb">
+        {/* <div className="section-breadcrumb">
           <span>{data.company.name}</span>
           <span>/</span>
           <strong>Overview</strong>
-        </div>
+        </div> */}
 
         <div className="space-y-3">
           <div className="flex items-center gap-4">
@@ -83,12 +83,12 @@ export function AdminDashboardClient({
           </div>
         </div>
 
-        <div className="page-tabs">
+        {/* <div className="page-tabs">
           <span className="page-tab page-tab-active">Overview</span>
           <span className="page-tab">Members</span>
           <span className="page-tab">Policies</span>
           <span className="page-tab">Activity</span>
-        </div>
+        </div> */}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">

@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "title": "Organisation ID",
+      "description": "Your organisation's unique identifier from the compliance platform.",
+      "type": "string"
+    },
+    "api_key": {
+      "title": "API Key",
+      "description": "Secret API key used to authenticate the extension with the platform.",
+      "type": "string"
+    },
+    "api_endpoint": {
+      "title": "API Endpoint",
+      "description": "Base URL of the compliance platform API (e.g. https://api.yourplatform.com/api).",
+      "type": "string"
+    }
+  }
+}

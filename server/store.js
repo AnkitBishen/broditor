@@ -33,7 +33,7 @@ class PostgresStore {
     return result.rows[0] ?? null;
   }
 
-  async createOrganization({ name, extensionApiKeyHash, plan = "enterprise", status = "active" }) {
+  async createOrganization({ name, extensionApiKeyHash, plan = "starter", status = "active" }) {
     const result = await this.pool.query(
       `insert into organizations (name, extension_api_key_hash, plan, status)
        values ($1, $2, $3, $4)
@@ -55,6 +55,29 @@ class PostgresStore {
        where id = $1
        returning *`,
       [orgId, extensionApiKeyHash]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async getExtensionDownloadInfo(orgId) {
+    const result = await this.pool.query(
+      `select id, name, plan, status, extension_api_key_hash, extension_download_count, extension_last_downloaded_at
+       from organizations
+       where id = $1
+       limit 1`,
+      [orgId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async recordExtensionDownload(orgId) {
+    const result = await this.pool.query(
+      `update organizations
+       set extension_download_count = extension_download_count + 1,
+           extension_last_downloaded_at = now()
+       where id = $1
+       returning id, name, plan, status, extension_download_count, extension_last_downloaded_at`,
+      [orgId]
     );
     return result.rows[0] ?? null;
   }
@@ -84,6 +107,16 @@ class PostgresStore {
   }
 
   async createUser({ orgId, fullName, email, passwordHash, role }) {
+    const result = await this.pool.query(
+      `insert into users (org_id, full_name, email, password, role)
+       values ($1, $2, $3, $4, $5)
+       returning *`,
+      [orgId, normalize(fullName), normalize(email).toLowerCase(), passwordHash, role]
+    );
+    return result.rows[0];
+  }
+
+  async createUserInOrganization({ orgId, fullName, email, passwordHash, role }) {
     const result = await this.pool.query(
       `insert into users (org_id, full_name, email, password, role)
        values ($1, $2, $3, $4, $5)

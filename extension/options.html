@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extension Setup — Browser Activity Audit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f12;
+      --surface:   #13161b;
+      --border:    #232730;
+      --border-hi: #3a4050;
+      --accent:    #00e5a0;
+      --accent-dim:#00e5a022;
+      --danger:    #ff4d6d;
+      --text:      #e8eaf0;
+      --muted:     #6b7280;
+      --input-bg:  #0a0c0f;
+    }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 16px 80px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px #ffffff08, 0 32px 64px #00000060;
+      animation: slideUp .4s cubic-bezier(.16,1,.3,1) both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 32px 36px 28px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+      opacity: .06;
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--accent)44;
+      border-radius: 4px;
+      padding: 3px 8px;
+      margin-bottom: 14px;
+    }
+    .badge-dot {
+      width: 5px; height: 5px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: .3; }
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1.2;
+      color: var(--text);
+    }
+    .header p {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    /* ── Form ── */
+    .body { padding: 32px 36px; }
+
+    .field { margin-bottom: 22px; }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .input-wrap { position: relative; }
+    input[type="text"],
+    input[type="password"],
+    input[type="url"] {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus {
+      border-color: var(--accent)88;
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+    input.error { border-color: var(--danger)88; }
+    input::placeholder { color: var(--muted); opacity: .5; }
+
+    .toggle-vis {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 11px;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: .06em;
+      padding: 2px 4px;
+      transition: color .15s;
+    }
+    .toggle-vis:hover { color: var(--text); }
+
+    .hint {
+      margin-top: 5px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 28px 0;
+    }
+
+    /* ── Buttons ── */
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0c0f;
+    }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 8px 24px var(--accent)44; }
+    .btn-primary:active { transform: translateY(0); filter: brightness(.95); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; filter: none; box-shadow: none; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
+
+    /* ── Status toast ── */
+    #status {
+      margin-top: 18px;
+      padding: 11px 14px;
+      border-radius: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      display: none;
+      animation: fadeIn .25s ease both;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+    #status.success {
+      display: block;
+      background: #00e5a012;
+      border: 1px solid var(--accent)44;
+      color: var(--accent);
+    }
+    #status.error {
+      display: block;
+      background: #ff4d6d12;
+      border: 1px solid var(--danger)44;
+      color: var(--danger);
+    }
+
+    /* ── Connection test result ── */
+    #test-result {
+      margin-top: 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      min-height: 16px;
+      transition: color .2s;
+    }
+    #test-result.ok  { color: var(--accent); }
+    #test-result.err { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="badge"><span class="badge-dot"></span>Setup Required</div>
+      <h1>Browser Audit Platform</h1>
+      <p>Enter your organisation credentials to activate monitoring. Contact your IT administrator if you don't have these.</p>
+    </div>
+
+    <div class="body">
+      <div class="field">
+        <label for="orgId">Organisation ID</label>
+        <input type="text" id="orgId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
+        <div class="hint">Found in your platform dashboard → Settings → Organisation.</div>
+      </div>
+
+      <div class="field">
+        <label for="apiKey">API Key</label>
+        <div class="input-wrap">
+          <input type="password" id="apiKey" placeholder="bak_••••••••••••••••••••••" autocomplete="off" spellcheck="false" />
+          <button class="toggle-vis" type="button" id="toggleKey">show</button>
+        </div>
+        <div class="hint">Keep this secret — it authenticates all events from this device.</div>
+      </div>
+
+      <div class="field">
+        <label for="apiEndpoint">API Endpoint</label>
+        <input type="url" id="apiEndpoint" placeholder="https://api.yourplatform.com/api" autocomplete="off" spellcheck="false" />
+        <div class="hint">Include the full URL with protocol and path prefix.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="actions">
+        <button class="btn btn-ghost" type="button" id="testBtn">Test Connection</button>
+        <button class="btn btn-primary" type="button" id="saveBtn">Save &amp; Activate</button>
+      </div>
+
+      <div id="test-result"></div>
+      <div id="status"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./options.js"></script>
+  <!-- Inline module moved to options.js because extension CSP blocks inline scripts.
+    import { saveOptionsConfig, getSavedOptionsConfig } from "./config.js";
+    import { verifyExtensionCredentials, ensureDeviceRegistration, refreshRemoteConfig } from "./api.js";
+    import { connectLiveSocket } from "./websocket.js";
+
+    const orgIdEl      = document.getElementById("orgId");
+    const apiKeyEl     = document.getElementById("apiKey");
+    const apiEndpointEl= document.getElementById("apiEndpoint");
+    const saveBtn      = document.getElementById("saveBtn");
+    const testBtn      = document.getElementById("testBtn");
+    const toggleKeyBtn = document.getElementById("toggleKey");
+    const statusEl     = document.getElementById("status");
+    const testResultEl = document.getElementById("test-result");
+
+    // ── Populate saved values on load ──────────────────────────────────────
+    (async () => {
+      try {
+        const saved = await getSavedOptionsConfig();
+        if (saved.orgId)       orgIdEl.value       = saved.orgId;
+        if (saved.apiKey)      apiKeyEl.value      = saved.apiKey;
+        if (saved.apiEndpoint) apiEndpointEl.value = saved.apiEndpoint;
+      } catch {}
+    })();
+
+    // ── Toggle API key visibility ──────────────────────────────────────────
+    toggleKeyBtn.addEventListener("click", () => {
+      const hidden = apiKeyEl.type === "password";
+      apiKeyEl.type        = hidden ? "text" : "password";
+      toggleKeyBtn.textContent = hidden ? "hide" : "show";
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function showStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className   = type; // "success" | "error"
+    }
+
+    function clearHighlights() {
+      [orgIdEl, apiKeyEl, apiEndpointEl].forEach(el => el.classList.remove("error"));
+    }
+
+    function validate() {
+      clearHighlights();
+      let ok = true;
+      if (!orgIdEl.value.trim())       { orgIdEl.classList.add("error");       ok = false; }
+      if (!apiKeyEl.value.trim())      { apiKeyEl.classList.add("error");      ok = false; }
+      if (!apiEndpointEl.value.trim()) { apiEndpointEl.classList.add("error"); ok = false; }
+      return ok;
+    }
+
+    function getFormValues() {
+      return {
+        orgId:       orgIdEl.value.trim(),
+        apiKey:      apiKeyEl.value.trim(),
+        apiEndpoint: apiEndpointEl.value.trim().replace(/\/$/, "") // strip trailing slash
+      };
+    }
+
+    // ── Test connection ───────────────────────────────────────────────────
+    testBtn.addEventListener("click", async () => {
+      if (!validate()) { showStatus("Please fill in all fields before testing.", "error"); return; }
+
+      testBtn.textContent  = "Testing…";
+      testBtn.disabled     = true;
+      testResultEl.className = "";
+      testResultEl.textContent = "";
+
+      try {
+        // Temporarily write to local so verifyExtensionCredentials can read config
+        await saveOptionsConfig(getFormValues());
+        await verifyExtensionCredentials();
+        testResultEl.textContent = "✓ Connection successful — credentials verified.";
+        testResultEl.className   = "ok";
+      } catch (err) {
+        testResultEl.textContent = `✗ ${err.message}`;
+        testResultEl.className   = "err";
+      } finally {
+        testBtn.textContent = "Test Connection";
+        testBtn.disabled    = false;
+      }
+    });
+
+    // ── Save & activate ───────────────────────────────────────────────────
+    saveBtn.addEventListener("click", async () => {
+      if (!validate()) { showStatus("Please fill in all required fields.", "error"); return; }
+
+      saveBtn.textContent = "Saving…";
+      saveBtn.disabled    = true;
+
+      try {
+        console.log(getFormValues())
+        await saveOptionsConfig(getFormValues());
+
+        // Kick off full init sequence so the service worker doesn't need a restart
+        await verifyExtensionCredentials();
+        await ensureDeviceRegistration();
+        await refreshRemoteConfig();
+        await connectLiveSocket();
+
+        showStatus("✓ Configuration saved. Monitoring is now active.", "success");
+      } catch (err) {
+        showStatus(`✗ ${err.message}`, "error");
+      } finally {
+        saveBtn.textContent = "Save & Activate";
+        saveBtn.disabled    = false;
+      }
+    });
+  -->
+</body>
+</html>

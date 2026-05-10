@@ -106,33 +106,21 @@ async function handleUrlCapture(details) {
   await emitIfRisky(event);
 }
 
-// Opens the options page and notifies the user that setup is required.
-// Silently swallows the error so the service worker doesn't crash on first install.
-async function initExtension() {
-  try {
-    await verifyExtensionCredentials();
-    await ensureDeviceRegistration();
-    await refreshRemoteConfig();
-    await connectLiveSocket();
-  } catch (error) {
-    if (error.message.includes("not configured")) {
-      console.warn("Extension not configured — opening options page.");
-      chrome.runtime.openOptionsPage();
-      return;
-    }
-    console.error("Extension initialisation failed:", error.message);
-  }
-}
-
 chrome.runtime.onInstalled.addListener(async () => {
-  await initExtension();
+  await verifyExtensionCredentials();
+  await ensureDeviceRegistration();
+  await refreshRemoteConfig();
+  await connectLiveSocket();
 
   chrome.alarms.create(ALARM_SYNC, { periodInMinutes: 5 });
   chrome.alarms.create(ALARM_CONFIG, { periodInMinutes: 30 });
 });
 
 chrome.runtime.onStartup.addListener(async () => {
-  await initExtension();
+  await verifyExtensionCredentials();
+  await ensureDeviceRegistration();
+  await refreshRemoteConfig();
+  await connectLiveSocket();
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -154,16 +142,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     return;
   }
 
-  try {
-    await handleUrlCapture({
-      eventType: "tabs_updated",
-      url: tab.url,
-      pageTitle: tab.title || "",
-      metadata: { tab_id: tabId, status: changeInfo.status }
-    });
-  } catch (error) {
-    console.warn("tabs.onUpdated capture failed:", error.message);
-  }
+  await handleUrlCapture({
+    eventType: "tabs_updated",
+    url: tab.url,
+    pageTitle: tab.title || "",
+    metadata: { tab_id: tabId, status: changeInfo.status }
+  });
 });
 
 chrome.webNavigation.onCompleted.addListener(async (details) => {
@@ -171,15 +155,11 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
     return;
   }
 
-  try {
-    await handleUrlCapture({
-      eventType: "navigation_completed",
-      url: details.url,
-      metadata: { tab_id: details.tabId, frame_id: details.frameId }
-    });
-  } catch (error) {
-    console.warn("webNavigation.onCompleted capture failed:", error.message);
-  }
+  await handleUrlCapture({
+    eventType: "navigation_completed",
+    url: details.url,
+    metadata: { tab_id: details.tabId, frame_id: details.frameId }
+  });
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -218,36 +198,28 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 });
 
 chrome.idle.onStateChanged.addListener(async (newState) => {
-  try {
-    const settings = await getOrgSettings();
-    const event = await buildEvent("idle", {
-      metadata: {
-        state: newState,
-        idle_threshold_seconds: settings.idle_threshold_seconds
-      }
-    });
-    await queueEvent(event);
-  } catch (error) {
-    console.warn("idle event capture failed:", error.message);
-  }
+  const settings = await getOrgSettings();
+  const event = await buildEvent("idle", {
+    metadata: {
+      state: newState,
+      idle_threshold_seconds: settings.idle_threshold_seconds
+    }
+  });
+  await queueEvent(event);
 });
 
 chrome.downloads.onCreated.addListener(async (downloadItem) => {
-  try {
-    const event = await buildEvent("download", {
-      url: downloadItem.url,
-      pageTitle: downloadItem.filename,
-      metadata: {
-        filename: downloadItem.filename,
-        mime: downloadItem.mime,
-        total_bytes: downloadItem.totalBytes,
-        download_bytes: downloadItem.totalBytes
-      }
-    });
+  const event = await buildEvent("download", {
+    url: downloadItem.url,
+    pageTitle: downloadItem.filename,
+    metadata: {
+      filename: downloadItem.filename,
+      mime: downloadItem.mime,
+      total_bytes: downloadItem.totalBytes,
+      download_bytes: downloadItem.totalBytes
+    }
+  });
 
-    await queueEvent(event);
-    await emitIfRisky(event);
-  } catch (error) {
-    console.warn("download event capture failed:", error.message);
-  }
+  await queueEvent(event);
+  await emitIfRisky(event);
 });

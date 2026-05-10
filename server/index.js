@@ -2,6 +2,8 @@ require("./env");
 
 const { createServer } = require("http");
 const { randomUUID } = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
 const bcrypt = require("bcryptjs");
 const express = require("express");
@@ -15,6 +17,8 @@ const { createStore } = require("./store");
 
 const PORT = process.env.PORT || 4000;
 const API_SECRET = process.env.API_JWT_SECRET || "change-this-in-production";
+const PUBLIC_API_BASE_URL = process.env.PUBLIC_API_BASE_URL || `http://localhost:${PORT}/api`;
+const STARTER_EXTENSION_DOWNLOAD_LIMIT = 2;
 const app = express();
 
 app.use(express.json({ limit: "2mb" }));
@@ -124,6 +128,31 @@ function validateLoginInput(body) {
   return { email, password };
 }
 
+function validateAdminUserInput(body) {
+  const fullName = String(body.full_name || body.fullName || "").trim();
+  const email = String(body.email || "").trim().toLowerCase();
+  const password = String(body.password || "");
+  const role = String(body.role || "user").trim().toLowerCase();
+
+  if (fullName.length < 2) {
+    return { error: "Full name must be at least 2 characters long." };
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "Please provide a valid work email address." };
+  }
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters long." };
+  }
+
+  if (!["admin", "user"].includes(role)) {
+    return { error: "Role must be admin or user." };
+  }
+
+  return { fullName, email, password, role };
+}
+
 function validateDeviceRegistration(body) {
   const deviceId = String(body.device_id || "").trim();
   const deviceFingerprint = String(body.device_fingerprint || "").trim();
@@ -168,6 +197,114 @@ function normalizeIncomingEvent(event, context, blocklistMap) {
     occurredAt,
     blocklistMatch
   };
+}
+
+const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let crc = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+  }
+  return crc >>> 0;
+});
+
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc = CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function dosDateTime(date = new Date()) {
+  const year = Math.max(date.getFullYear(), 1980);
+  const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+  const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+  return { dosDate, dosTime };
+}
+
+function createZipArchive(files) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  const { dosDate, dosTime } = dosDateTime();
+
+  for (const file of files) {
+    const nameBuffer = Buffer.from(file.name.replace(/\\/g, "/"));
+    const data = file.data;
+    const crc = crc32(data);
+
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0, 6);
+    localHeader.writeUInt16LE(0, 8);
+    localHeader.writeUInt16LE(dosTime, 10);
+    localHeader.writeUInt16LE(dosDate, 12);
+    localHeader.writeUInt32LE(crc, 14);
+    localHeader.writeUInt32LE(data.length, 18);
+    localHeader.writeUInt32LE(data.length, 22);
+    localHeader.writeUInt16LE(nameBuffer.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+    localParts.push(localHeader, nameBuffer, data);
+
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0, 8);
+    centralHeader.writeUInt16LE(0, 10);
+    centralHeader.writeUInt16LE(dosTime, 12);
+    centralHeader.writeUInt16LE(dosDate, 14);
+    centralHeader.writeUInt32LE(crc, 16);
+    centralHeader.writeUInt32LE(data.length, 20);
+    centralHeader.writeUInt32LE(data.length, 24);
+    centralHeader.writeUInt16LE(nameBuffer.length, 28);
+    centralHeader.writeUInt16LE(0, 30);
+    centralHeader.writeUInt16LE(0, 32);
+    centralHeader.writeUInt16LE(0, 34);
+    centralHeader.writeUInt16LE(0, 36);
+    centralHeader.writeUInt32LE(0, 38);
+    centralHeader.writeUInt32LE(offset, 42);
+    centralParts.push(centralHeader, nameBuffer);
+
+    offset += localHeader.length + nameBuffer.length + data.length;
+  }
+
+  const centralDirectory = Buffer.concat(centralParts);
+  const localFiles = Buffer.concat(localParts);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(centralDirectory.length, 12);
+  end.writeUInt32LE(localFiles.length, 16);
+  end.writeUInt16LE(0, 20);
+
+  return Buffer.concat([localFiles, centralDirectory, end]);
+}
+
+function buildExtensionBundle() {
+  const extensionDir = path.join(__dirname, "..", "extension");
+  const fileNames = [
+    "manifest.json",
+    "managed_schema.json",
+    "options.html",
+    "options.js",
+    "api.js",
+    "config.js",
+    "storage.js",
+    "websocket.js",
+    "service-worker.js"
+  ];
+
+  const files = fileNames.map((fileName) => ({
+    name: `browser-audit-extension/${fileName}`,
+    data: fs.readFileSync(path.join(extensionDir, fileName))
+  }));
+
+  return createZipArchive(files);
 }
 
 async function startServer() {
@@ -617,6 +754,70 @@ async function startServer() {
     }
   });
 
+  app.post("/api/admin/users", verifyToken, requireAdmin, async (req, res) => {
+    const parsed = validateAdminUserInput(req.body);
+    if (parsed.error) {
+      return res.status(400).json({ message: parsed.error });
+    }
+
+    try {
+      const existingUser = await store.findUserByEmail(parsed.email);
+      if (existingUser) {
+        return res.status(409).json({ message: "A user with that email already exists." });
+      }
+
+      const passwordHash = await bcrypt.hash(parsed.password, 12);
+      const user = await store.createUserInOrganization({
+        orgId: req.user.org_id,
+        fullName: parsed.fullName,
+        email: parsed.email,
+        passwordHash,
+        role: parsed.role
+      });
+
+      return res.status(201).json({
+        user: {
+          id: user.id,
+          fullName: user.full_name,
+          email: user.email,
+          role: user.role,
+          createdAt: user.created_at
+        }
+      });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to create user.", detail: error.message });
+    }
+  });
+
+  app.get("/api/admin/extension", verifyToken, requireAdmin, async (req, res) => {
+    try {
+      const organization = await store.getExtensionDownloadInfo(req.user.org_id);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found." });
+      }
+
+      const downloadLimit = organization.plan === "starter" ? STARTER_EXTENSION_DOWNLOAD_LIMIT : null;
+      return res.json({
+        organization: {
+          id: organization.id,
+          name: organization.name,
+          plan: organization.plan,
+          status: organization.status
+        },
+        apiEndpoint: PUBLIC_API_BASE_URL,
+        apiKeyConfigured:
+          Boolean(organization.extension_api_key_hash) && organization.extension_api_key_hash !== "UNCONFIGURED",
+        downloads: {
+          count: organization.extension_download_count ?? 0,
+          limit: downloadLimit,
+          lastDownloadedAt: organization.extension_last_downloaded_at
+        }
+      });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to load extension setup.", detail: error.message });
+    }
+  });
+
   app.post("/api/admin/extension-key/rotate", verifyToken, requireAdmin, async (req, res) => {
     try {
       const nextApiKey = createExtensionApiKey();
@@ -628,6 +829,30 @@ async function startServer() {
       });
     } catch (error) {
       return res.status(500).json({ message: "Unable to rotate extension API key.", detail: error.message });
+    }
+  });
+
+  app.post("/api/admin/extension/download", verifyToken, requireAdmin, async (req, res) => {
+    try {
+      const organization = await store.getExtensionDownloadInfo(req.user.org_id);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found." });
+      }
+
+      if (organization.plan === "starter" && organization.extension_download_count >= STARTER_EXTENSION_DOWNLOAD_LIMIT) {
+        return res.status(403).json({
+          message: `Starter plan extension downloads are limited to ${STARTER_EXTENSION_DOWNLOAD_LIMIT}. Upgrade to download again.`
+        });
+      }
+
+      const updated = await store.recordExtensionDownload(req.user.org_id);
+      const bundle = buildExtensionBundle();
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", 'attachment; filename="browser-audit-extension.zip"');
+      res.setHeader("X-Extension-Download-Count", String(updated?.extension_download_count ?? ""));
+      return res.send(bundle);
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to download extension.", detail: error.message });
     }
   });
 
