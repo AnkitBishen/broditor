@@ -145,3 +145,4 @@ vite.config.ts.timestamp-*
 
 .vscode/
 graphify-out/
+extension_/

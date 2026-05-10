@@ -17,7 +17,7 @@ const { createStore } = require("./store");
 
 const PORT = process.env.PORT || 4000;
 const API_SECRET = process.env.API_JWT_SECRET || "change-this-in-production";
-const PUBLIC_API_BASE_URL = process.env.PUBLIC_API_BASE_URL || `http://localhost:${PORT}/api`;
+const PUBLIC_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || `http://localhost:${PORT}/api`;
 const STARTER_EXTENSION_DOWNLOAD_LIMIT = 2;
 const app = express();
 
