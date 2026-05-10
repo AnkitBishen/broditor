@@ -1,6 +1,6 @@
 import type { AuthRole } from "@/lib/types";
 
-export const ADMIN_ONLY_PREFIXES = ["/dashboard/admin", "/team", "/users"] as const;
+export const ADMIN_ONLY_PREFIXES = ["/dashboard/admin", "/team", "/users", "/extension-setup"] as const;
 export const SHARED_PROTECTED_PREFIXES = [
   "/dashboard/user",
   "/activity",

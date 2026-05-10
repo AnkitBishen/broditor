@@ -13,12 +13,24 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <p className="eyebrow">Workspace Preferences</p>
+      <div className="space-y-5">
+        <div className="section-breadcrumb">
+          <span>Browser Audit</span>
+          <span>/</span>
+          <strong>Settings</strong>
+        </div>
+        <div className="space-y-3">
         <h1 className="page-title">Settings</h1>
         <p className="page-copy max-w-3xl">
           Review account metadata, role assignment, and session preferences for your authenticated workspace access.
         </p>
+        </div>
+        <div className="page-tabs">
+          <span className="page-tab page-tab-active">Preferences</span>
+          <span className="page-tab">Profile info</span>
+          <span className="page-tab">Password</span>
+          <span className="page-tab">Notifications</span>
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -40,7 +52,7 @@ export default async function SettingsPage() {
             ].map((item, index) => (
               <label
                 key={item}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                className="flex items-center justify-between gap-4 rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-3"
               >
                 <span className="text-sm text-slate-300">{item}</span>
                 <input
@@ -61,7 +73,7 @@ export default async function SettingsPage() {
           <input type="password" placeholder="Confirm new password" className="input-surface w-full" />
         </div>
         <div className="mt-5 flex items-center gap-3">
-          <button className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-orange-500 to-amber-600 px-4 text-sm font-semibold text-white">
+          <button className="gitlab-button-primary h-11 px-4">
             Update password
           </button>
           <Badge variant="neutral">Hook this form to a password rotation endpoint later</Badge>

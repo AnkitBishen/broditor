@@ -6,18 +6,19 @@
   color-scheme: dark;
   --font-sans: "Segoe UI Variable Text", Aptos, "Trebuchet MS", sans-serif;
   --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  --canvas: 22 22 28;
-  --panel: 29 29 38;
-  --panel-soft: 37 38 50;
-  --line: 52 54 72;
-  --text: 241 244 255;
-  --muted: 159 164 191;
-  --accent: 249 115 22;
-  --accent-soft: 56 39 25;
-  --info: 92 165 255;
-  --success: 82 210 115;
-  --warn: 245 185 66;
-  --danger: 255 107 129;
+  --canvas: 24 22 31;
+  --canvas-top: 49 45 57;
+  --panel: 31 29 38;
+  --panel-soft: 39 37 49;
+  --line: 65 63 76;
+  --text: 243 244 247;
+  --muted: 171 173 185;
+  --accent: 252 113 66;
+  --accent-soft: 74 44 32;
+  --info: 88 166 255;
+  --success: 102 187 106;
+  --warn: 237 176 62;
+  --danger: 232 92 92;
 }
 
 * {
@@ -31,8 +32,9 @@ body {
 
 body {
   background:
-    radial-gradient(circle at top left, rgba(249, 115, 22, 0.14), transparent 22%),
-    radial-gradient(circle at top right, rgba(92, 165, 255, 0.12), transparent 18%),
+    linear-gradient(180deg, rgba(var(--canvas-top), 0.94), rgba(var(--canvas), 1) 96px),
+    radial-gradient(circle at top left, rgba(252, 113, 66, 0.08), transparent 20%),
+    radial-gradient(circle at top right, rgba(88, 166, 255, 0.08), transparent 16%),
     rgb(var(--canvas));
   color: rgb(var(--text));
   font-feature-settings: "rlig" 1, "calt" 1;
@@ -43,12 +45,8 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: radial-gradient(circle at center, black, transparent 85%);
-  opacity: 0.35;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 120px);
+  opacity: 0.5;
 }
 
 a {
@@ -88,35 +86,86 @@ select {
 }
 
 .glass-panel {
-  @apply rounded-3xl border border-white/10 bg-panel/90 shadow-panel backdrop-blur-xl;
+  @apply rounded-[24px] border backdrop-blur-xl;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--panel), 0.94);
+  box-shadow: 0 24px 60px rgba(6, 7, 10, 0.34);
 }
 
 .panel {
-  @apply rounded-2xl border border-white/10 bg-panel/90;
+  @apply rounded-[18px] border;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--panel), 0.95);
 }
 
 .panel-muted {
-  @apply rounded-2xl border border-white/10 bg-panel-2/90;
+  @apply rounded-[16px] border;
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(var(--panel-soft), 0.7);
 }
 
 .eyebrow {
-  @apply text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400;
+  @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400;
 }
 
 .metric-value {
-  @apply text-3xl font-semibold tracking-tight text-white;
+  @apply text-[2rem] font-semibold tracking-tight text-white;
 }
 
 .page-title {
-  @apply text-2xl font-semibold tracking-tight text-white md:text-3xl;
+  @apply text-[2rem] font-semibold tracking-tight text-white md:text-[2.5rem];
 }
 
 .page-copy {
   @apply text-sm text-slate-400 md:text-base;
 }
 
+.page-tabs {
+  @apply flex flex-wrap items-center gap-6 border-b border-white/10 pb-3 text-sm text-slate-400;
+}
+
+.page-tab {
+  @apply border-b-2 border-transparent pb-3 transition-colors;
+}
+
+.page-tab-active {
+  @apply border-sky-400 text-white;
+}
+
+.section-breadcrumb {
+  @apply flex flex-wrap items-center gap-2 text-sm text-slate-400;
+}
+
+.section-breadcrumb strong {
+  @apply font-semibold text-white;
+}
+
 .input-surface {
-  @apply h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white placeholder:text-slate-500 focus:border-slate-500 focus:bg-white/10 focus:ring-0;
+  @apply h-11 rounded-[12px] border px-4 text-sm text-white placeholder:text-slate-500 focus:ring-0;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(17, 17, 23, 0.85);
+}
+
+.input-surface:focus {
+  border-color: rgba(88, 166, 255, 0.65);
+  background: rgba(20, 20, 27, 0.92);
+}
+
+.gitlab-button {
+  @apply inline-flex items-center justify-center rounded-[12px] border px-4 py-2.5 text-sm font-medium;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gitlab-button-primary {
+  @apply inline-flex items-center justify-center rounded-[12px] px-4 py-2.5 text-sm font-medium text-[#1d1b24];
+  background: #f4f5f7;
+}
+
+.gitlab-filter-chip {
+  @apply inline-flex items-center gap-2 rounded-[10px] border px-3 py-2 text-sm;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .table-scroll {

@@ -12,7 +12,8 @@ export function Table<T extends { id: string }>({
   pageSize = 6,
   emptyTitle = "No records found",
   emptyCopy = "Try adjusting the current filters or search terms.",
-  loading = false
+  loading = false,
+  onRowClick
 }: {
   columns: TableColumn<T>[];
   data: T[];
@@ -20,6 +21,7 @@ export function Table<T extends { id: string }>({
   emptyTitle?: string;
   emptyCopy?: string;
   loading?: boolean;
+  onRowClick?: (row: T) => void;
 }) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -62,15 +64,15 @@ export function Table<T extends { id: string }>({
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10">
+    <div className="overflow-hidden rounded-[16px] border border-white/[0.08] bg-[#1c1b24]">
       <div className="table-scroll overflow-x-auto">
-        <table className="min-w-full divide-y divide-white/10 text-sm">
-          <thead className="bg-white/[0.03]">
+        <table className="min-w-full divide-y divide-white/[0.08] text-sm">
+          <thead className="bg-[#2a2833]">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={cx("px-4 py-3 text-left font-medium text-slate-300", column.className)}
+                  className={cx("px-4 py-3 text-left text-[13px] font-medium text-slate-300", column.className)}
                 >
                   {column.sortable ? (
                     <button
@@ -88,7 +90,7 @@ export function Table<T extends { id: string }>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-white/[0.06]">
             {loading
               ? Array.from({ length: pageSize }).map((_, index) => (
                   <tr key={`loading-${index}`} className="shimmer">
@@ -99,9 +101,27 @@ export function Table<T extends { id: string }>({
 
             {!loading &&
               pageRows.map((row) => (
-                <tr key={row.id} className="hover:bg-white/[0.03]">
+                <tr
+                  key={row.id}
+                  className={cx(
+                    "hover:bg-white/[0.03]",
+                    onRowClick && "cursor-pointer transition-colors focus-within:bg-white/[0.03]"
+                  )}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  onKeyDown={
+                    onRowClick
+                      ? (event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onRowClick(row);
+                          }
+                        }
+                      : undefined
+                  }
+                  tabIndex={onRowClick ? 0 : undefined}
+                >
                   {columns.map((column) => (
-                    <td key={column.key} className={cx("px-4 py-4 align-top text-slate-200", column.className)}>
+                    <td key={column.key} className={cx("px-4 py-4 align-top text-[14px] text-slate-200", column.className)}>
                       {column.render
                         ? column.render(row)
                         : String((row as Record<string, unknown>)[column.key] ?? "-")}
@@ -120,7 +140,7 @@ export function Table<T extends { id: string }>({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-white/[0.02] px-4 py-3 text-xs text-slate-400">
+      <div className="flex items-center justify-between gap-3 border-t border-white/[0.08] bg-[#25232d] px-4 py-3 text-xs text-slate-400">
         <p>
           Showing {pageRows.length === 0 ? 0 : start + 1}-{Math.min(start + pageRows.length, sorted.length)} of{" "}
           {sorted.length}
@@ -130,7 +150,7 @@ export function Table<T extends { id: string }>({
             type="button"
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={clampedPage === 1}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-white/10 bg-white/5 text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -141,7 +161,7 @@ export function Table<T extends { id: string }>({
             type="button"
             onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
             disabled={clampedPage === totalPages}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-white/10 bg-white/5 text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

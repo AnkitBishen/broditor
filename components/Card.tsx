@@ -16,12 +16,12 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className={cx("panel overflow-hidden p-5 md:p-6", className)}>
+    <section className={cx("panel overflow-hidden p-4 md:p-5", className)}>
       {(title || eyebrow || action) && (
-        <header className="mb-5 flex items-start justify-between gap-4">
+        <header className="mb-4 flex items-start justify-between gap-4 border-b border-white/[0.08] pb-4">
           <div className="space-y-1">
             {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-            {title ? <h2 className="text-lg font-semibold text-white">{title}</h2> : null}
+            {title ? <h2 className="text-[1.08rem] font-semibold text-white">{title}</h2> : null}
           </div>
           {action}
         </header>

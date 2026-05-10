@@ -38,12 +38,25 @@ export function AlertsClient({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <p className="eyebrow">Incident Queue</p>
-        <h1 className="page-title">Alerts</h1>
-        <p className="page-copy max-w-3xl">
-          Review triggered compliance alerts, filter by severity or status, and triage the highest-risk activity first.
-        </p>
+      <div className="space-y-5">
+        <div className="section-breadcrumb">
+          <span>Browser Audit</span>
+          <span>/</span>
+          <strong>Alerts</strong>
+        </div>
+        <div className="space-y-3">
+          <h1 className="page-title">Alert stream</h1>
+          <p className="page-copy max-w-3xl">
+            Review triggered compliance alerts, filter by severity or status, and triage the highest-risk activity
+            first.
+          </p>
+        </div>
+        <div className="page-tabs">
+          <span className="page-tab page-tab-active">Open alerts</span>
+          <span className="page-tab">Assigned</span>
+          <span className="page-tab">Resolved</span>
+          <span className="page-tab">Dismissed</span>
+        </div>
       </div>
 
       <Card
@@ -69,14 +82,14 @@ export function AlertsClient({
       >
         <div className="space-y-4">
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-14 text-center">
+            <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-6 py-14 text-center">
               <p className="text-lg font-semibold text-white">No alerts match the current filters</p>
               <p className="mt-2 text-sm text-slate-400">Try widening the severity or status filters.</p>
             </div>
           ) : null}
 
           {filtered.map((alert) => (
-            <article key={alert.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <article key={alert.id} className="rounded-[16px] border border-white/10 bg-white/[0.03] p-5">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -87,7 +100,7 @@ export function AlertsClient({
                     <Badge variant="purple">{alert.alert_type}</Badge>
                   </div>
                   <h2 className="text-lg font-semibold text-white">{alert.trigger_reason}</h2>
-                  <p className="text-sm text-slate-400">{alert.employee_name || "Unassigned device"} • {alert.id}</p>
+                  <p className="text-sm text-slate-400">{alert.employee_name || "Unassigned device"} - {alert.id}</p>
                 </div>
                 <p className="text-sm text-slate-400">{formatDateTime(alert.triggered_at)}</p>
               </div>
