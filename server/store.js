@@ -162,6 +162,17 @@ class PostgresStore {
     return result.rows;
   }
 
+  async updateUserPassword(email, passwordHash) {
+    const result = await this.pool.query(
+      `update users
+       set password = $2
+       where lower(email) = lower($1)
+       returning id, full_name, email, role, org_id`,
+      [normalize(email), passwordHash]
+    );
+    return result.rows[0] ?? null;
+  }
+
   async registerDevice({ id, employeeId = null, orgId, deviceFingerprint, browser, os }) {
     const result = await this.pool.query(
       `insert into devices (id, employee_id, org_id, device_fingerprint, browser, os, registered_at, last_seen_at)

@@ -434,6 +434,37 @@ async function startServer() {
     }
   });
 
+  app.post("/api/auth/reset-password", async (req, res) => {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "Please provide a valid email address." });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long." });
+    }
+
+    try {
+      const existingUser = await store.findUserByEmail(email);
+      if (!existingUser) {
+        return res.status(404).json({ message: "No account found with that email address." });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 12);
+      const updated = await store.updateUserPassword(email, passwordHash);
+
+      if (!updated) {
+        return res.status(500).json({ message: "Unable to update password." });
+      }
+
+      return res.json({ message: "Password has been reset successfully." });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to reset password.", detail: error.message });
+    }
+  });
+
   app.post("/api/auth/login", async (req, res) => {
     const parsed = validateLoginInput(req.body);
     if (parsed.error) {
