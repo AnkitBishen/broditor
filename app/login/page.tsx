@@ -155,11 +155,13 @@ export default function LoginPage() {
         {/* ── Right panel — Login form ── */}
         <section className="glass-panel mx-auto w-full max-w-xl p-8 md:p-10">
           <Link href="/" className="group mb-6 flex items-center gap-3 transition-opacity hover:opacity-80">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[#fc7142] text-sm font-black text-[#1f1b24] shadow-lg shadow-orange-500/20 transition-transform group-hover:scale-105">
-              BA
-            </span>
+            <img 
+              src="/logo.png" 
+              alt="Broditor" 
+              className="h-11 w-11 shrink-0 rounded-[12px] object-cover shadow-lg shadow-orange-500/20 transition-transform group-hover:scale-105" 
+            />
             <span className="text-[15px] font-semibold text-white">
-              Browser Audit
+              Broditor
             </span>
           </Link>
 
@@ -186,12 +188,12 @@ export default function LoginPage() {
             <label className="block space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-300">Password</span>
-                <Link
+                {/* <Link
                   href="/forgot-password"
                   className="text-xs font-medium text-sky-300 hover:text-sky-200 transition-colors"
                 >
                   Forgot password?
-                </Link>
+                </Link> */}
               </div>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -228,7 +230,7 @@ export default function LoginPage() {
               href="/forgot-password"
               className="text-sm font-medium text-slate-400 hover:text-slate-200 transition-colors"
             >
-              Reset password
+              Forgot password?
             </Link>
           </div>
 

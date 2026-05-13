@@ -48,10 +48,12 @@ export function Navbar({
           </button>
 
           <Link href="/dashboard" className="flex items-center gap-3 text-white">
-            <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#fc6f41] font-bold text-[#1e1b25]">
-              BA
-            </div>
-            <span className="hidden text-[15px] font-semibold sm:inline">Browser Audit</span>
+            <img 
+              src="/logo.png" 
+              alt="Broditor" 
+              className="h-9 w-9 shrink-0 rounded-[10px] object-cover" 
+            />
+            <span className="hidden text-[15px] font-semibold sm:inline">Broditor</span>
           </Link>
         </div>
 

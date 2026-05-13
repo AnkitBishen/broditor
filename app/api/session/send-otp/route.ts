@@ -62,8 +62,8 @@ export async function POST(request: Request) {
           htmlContent: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
               <div style="text-align: center; margin-bottom: 32px;">
-                <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; background: linear-gradient(135deg, #f97316, #c2410c); color: white; font-weight: 700; font-size: 16px; text-align: center;">BA</div>
-                <h2 style="margin: 16px 0 4px; color: #1f1b24; font-size: 22px;">Browser Audit</h2>
+                <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; background: linear-gradient(135deg, #f97316, #c2410c); color: white; font-weight: 700; font-size: 16px; text-align: center;">B</div>
+                <h2 style="margin: 16px 0 4px; color: #1f1b24; font-size: 22px;">Broditor</h2>
                 <p style="color: #6b7280; font-size: 14px; margin: 0;">Email Verification</p>
               </div>
               <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; text-align: center;">

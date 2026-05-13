@@ -181,9 +181,11 @@ export function Sidebar({
                 href={dashboardHref}
                 className="mt-3 flex items-center gap-3 rounded-[14px] bg-[#44556f] px-3 py-3 text-white"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[#f4f5f7] text-sm font-bold text-[#fc6f41]">
-                  BA
-                </div>
+                <img 
+                  src="/logo.png" 
+                  alt="Broditor" 
+                  className="h-10 w-10 shrink-0 rounded-[10px] object-cover" 
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">{currentUser?.companyName ?? "Browser Audit"}</p>
                 </div>
@@ -193,9 +195,13 @@ export function Sidebar({
             <div className="flex justify-center">
               <Link
                 href={dashboardHref}
-                className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#f4f5f7] font-bold text-[#fc6f41]"
+                className="flex h-11 w-11 items-center justify-center rounded-[14px] overflow-hidden"
               >
-                BA
+                <img 
+                  src="/logo.png" 
+                  alt="Broditor" 
+                  className="h-full w-full object-cover" 
+                />
               </Link>
             </div>
           )}

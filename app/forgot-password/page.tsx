@@ -189,10 +189,12 @@ export default function ForgotPasswordPage() {
         {/* ── Logo ── */}
         <div className="mb-6 flex items-center justify-center">
           <Link href="/" className="group flex items-center gap-3 transition-opacity hover:opacity-80">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[#fc7142] text-sm font-black text-[#1f1b24] shadow-lg shadow-orange-500/20 transition-transform group-hover:scale-105">
-              BA
-            </span>
-            <span className="text-[15px] font-semibold text-white">Browser Audit</span>
+            <img 
+              src="/logo.png" 
+              alt="Broditor" 
+              className="h-11 w-11 shrink-0 rounded-[12px] object-cover shadow-lg shadow-orange-500/20 transition-transform group-hover:scale-105" 
+            />
+            <span className="text-[15px] font-semibold text-white">Broditor</span>
           </Link>
         </div>
 

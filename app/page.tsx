@@ -11,6 +11,8 @@ import {
   Users2
 } from "lucide-react";
 
+import { getSessionUser } from "@/lib/auth";
+
 import { MarketingShell, ProductDashboardVisual, SectionHeading } from "@/components/MarketingShell";
 
 const proofPoints = [
@@ -38,7 +40,9 @@ const capabilities = [
   }
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const user = await getSessionUser();
+
   return (
     <MarketingShell active="home">
       <section className="relative overflow-hidden">
@@ -55,18 +59,18 @@ export default function LandingPage() {
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                href="/register"
+                href={user ? "/dashboard" : "/register"}
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-white px-5 text-sm font-semibold text-[#1f1b24]"
               >
-                Create workspace
+                {user ? "Go to Dashboard" : "Create workspace"}
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link
+              {/* <Link
                 href="/docs"
                 className="inline-flex h-12 items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.05] px-5 text-sm font-semibold text-slate-200 hover:bg-white/10"
               >
                 View implementation
-              </Link>
+              </Link> */}
             </div>
 
             <div className="mt-10 grid gap-3 sm:grid-cols-2">
@@ -132,18 +136,21 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-14 md:px-6 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#76513f]">Ready for a walkthrough</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">Start with the docs or create a workspace.</h2>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">Start with create a workspace.</h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-[#5d5a66]">
               Use the implementation docs to understand the architecture, or register a tenant and try the auth,
               dashboard, and extension activation flow locally.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/docs" className="inline-flex h-11 items-center rounded-[10px] border border-[#d2d4dc] px-4 text-sm font-semibold">
+            {/* <Link href="/docs" className="inline-flex h-11 items-center rounded-[10px] border border-[#d2d4dc] px-4 text-sm font-semibold">
               Read docs
-            </Link>
-            <Link href="/register" className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#1f1b24] px-4 text-sm font-semibold text-white">
-              Create workspace
+            </Link> */}
+            <Link 
+              href={user ? "/dashboard" : "/register"} 
+              className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#1f1b24] px-4 text-sm font-semibold text-white"
+            >
+              {user ? "Dashboard" : "Create workspace"}
               <CheckCircle2 className="h-4 w-4" />
             </Link>
           </div>

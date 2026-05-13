@@ -5,32 +5,38 @@ import type { LucideIcon } from "lucide-react";
 
 import { cx } from "@/lib/utils";
 
+import { getSessionUser } from "@/lib/auth";
+
 type MarketingPage = "home" | "about" | "docs" | "help" | "pricing";
 
 const navItems: Array<{ href: string; label: string; key: MarketingPage; icon: LucideIcon }> = [
   { href: "/", label: "Home", key: "home", icon: Home },
   { href: "/about-us", label: "About us", key: "about", icon: Info },
-  { href: "/docs", label: "Docs", key: "docs", icon: BookOpen },
+  // { href: "/docs", label: "Docs", key: "docs", icon: BookOpen },
   { href: "/help", label: "Help", key: "help", icon: CircleHelp },
   { href: "/pricing", label: "Pricing", key: "pricing", icon: Tags }
 ];
 
-export function MarketingShell({
+export async function MarketingShell({
   active,
   children
 }: {
   active: MarketingPage;
   children: ReactNode;
 }) {
+  const user = await getSessionUser();
+
   return (
     <div className="min-h-screen bg-[#18161f] text-white">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#18161f]/92 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 md:px-6">
           <Link href="/" className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#fc7142] text-sm font-black text-[#1f1b24]">
-              BA
-            </span>
-            <span className="truncate text-[15px] font-semibold">Browser Audit</span>
+            <img 
+              src="/logo.png" 
+              alt="Broditor" 
+              className="h-10 w-10 shrink-0 rounded-[10px] object-cover" 
+            />
+            <span className="truncate text-[15px] font-semibold">Broditor</span>
           </Link>
 
           <nav className="ml-auto hidden items-center gap-1 rounded-[14px] border border-white/10 bg-white/[0.04] p-1 lg:flex">
@@ -53,17 +59,19 @@ export function MarketingShell({
           </nav>
 
           <div className="ml-auto flex items-center gap-2 lg:ml-2">
+            {!user && (
+              <Link
+                href="/login"
+                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.08]"
+              >
+                Sign in
+              </Link>
+            )}
             <Link
-              href="/login"
-              className="hidden h-10 items-center justify-center rounded-[10px] border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/[0.08] sm:inline-flex"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/register"
+              href={user ? "/dashboard" : "/register"}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-white px-4 text-sm font-semibold text-[#1f1b24]"
             >
-              Start
+              {user ? "Dashboard" : "Start"}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -97,13 +105,15 @@ export function MarketingShell({
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-10 text-sm text-slate-400 md:grid-cols-[1fr_auto] md:px-6">
           <div>
             <div className="flex items-center gap-3 text-white">
-              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#fc7142] text-xs font-black text-[#1f1b24]">
-                BA
-              </span>
-              <span className="font-semibold">Browser Activity Audit & Compliance Platform</span>
+              <img 
+                src="/logo.png" 
+                alt="Broditor" 
+                className="h-9 w-9 shrink-0 rounded-[10px] object-cover" 
+              />
+              <span className="font-semibold">Broditor - Browser Activity Audit & Compliance Platform</span>
             </div>
             <p className="mt-3 max-w-2xl leading-6">
-              Tenant-aware browser monitoring, audit trails, and compliance workflows for teams that need visibility
+              Browser monitoring, audit trails, and compliance workflows for teams that need visibility
               without losing operational control.
             </p>
           </div>
@@ -112,9 +122,9 @@ export function MarketingShell({
               <ShieldCheck className="h-4 w-4 text-[#66d782]" />
               Security-first sessions
             </span>
-            <Link href="/docs" className="rounded-[10px] border border-white/10 px-3 py-2 text-slate-200 hover:bg-white/[0.08]">
+            {/* <Link href="/docs" className="rounded-[10px] border border-white/10 px-3 py-2 text-slate-200 hover:bg-white/[0.08]">
               Read docs
-            </Link>
+            </Link> */}
           </div>
         </div>
       </footer>
