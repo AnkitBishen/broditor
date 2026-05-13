@@ -16,11 +16,13 @@ import {
 import { useState } from "react";
 
 import { api } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 import { canAccessPath, isProtectedPath } from "@/lib/routing";
-import type { AuthRole } from "@/lib/types";
+import type { AuthRole, SessionUser } from "@/lib/types";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setUser } = useAuth();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,14 +48,17 @@ export default function LoginPage() {
     const data = (await response.json()) as {
       message?: string;
       redirectTo?: string;
-      user?: { role: AuthRole };
+      user?: SessionUser;
     };
 
-    if (!response.ok || !data.user?.role || !data.redirectTo) {
+    if (!response.ok || !data.user || !data.redirectTo) {
       setError(data.message ?? "Unable to sign in.");
       setSubmitting(false);
       return;
     }
+
+    // Set the user state immediately for a responsive UI
+    setUser(data.user);
 
     router.push(resolveRedirect(data.user.role, data.redirectTo));
     router.refresh();
