@@ -124,6 +124,17 @@ async function initExtension() {
   }
 }
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "CONFIG_UPDATED") {
+    initExtension().then(() => {
+      sendResponse({ status: "ok" });
+    }).catch(err => {
+      sendResponse({ status: "error", message: err.message });
+    });
+    return true; // Keep channel open for async response
+  }
+});
+
 chrome.runtime.onInstalled.addListener(async () => {
   await initExtension();
 

@@ -9,7 +9,7 @@ const bcrypt = require("bcryptjs");
 const express = require("express");
 const jwt = require("jsonwebtoken");
 
-const { requireAdmin, requireUserOrAdmin, verifyIngestionToken, verifyToken } = require("./auth-middleware");
+const { requireAdmin, requireUserOrAdmin, verifyIngestionToken, verifyToken, decodeToken } = require("./auth-middleware");
 const { runAlertPipeline } = require("./services/alert-engine");
 const { deriveCategory, deriveDomain, deriveRiskLevel } = require("./services/enrichment");
 const { createWebsocketHub } = require("./services/websocket-hub");
@@ -371,9 +371,22 @@ async function startServer() {
   }
 
   const hub = createWebsocketHub(server, {
-    onRiskEvent: ({ orgId, deviceId, event }) => {
+    onRiskEvent: ({ orgId, deviceId, event, userToken }) => {
+      let employeeId = null;
+      if (userToken) {
+        try {
+          const decoded = decodeToken(userToken);
+          if (decoded.userId) {
+            employeeId = decoded.userId;
+          }
+        } catch (err) {
+          console.error(`Invalid user token in WebSocket risk event: ${err.message}`);
+        }
+      }
+
       processEvents({
         orgId,
+        employeeId,
         deviceId,
         incomingEvents: [event]
       }).catch((error) => {
@@ -543,16 +556,31 @@ async function startServer() {
     }
   });
 
+  // devices registeration means extension are installing
   app.post("/api/devices/register", verifyIngestionToken, async (req, res) => {
     const parsed = validateDeviceRegistration(req.body);
     if (parsed.error) {
       return res.status(400).json({ message: parsed.error });
     }
 
+    let employeeId = parsed.employeeId;
+    const userToken = req.headers["x-user-token"];
+    if (userToken) {
+      try {
+        const decoded = decodeToken(userToken);
+        if (decoded.userId) {
+          employeeId = decoded.userId;
+        }
+      } catch (err) {
+        // Log but don't fail, maybe the user token is just expired
+        console.error(`Invalid user token in device registration: ${err.message}`);
+      }
+    }
+
     try {
       const device = await store.registerDevice({
         id: parsed.deviceId,
-        employeeId: parsed.employeeId ?? req.user.userId ?? null,
+        employeeId: employeeId ?? req.user.userId ?? null,
         orgId: req.user.org_id,
         deviceFingerprint: parsed.deviceFingerprint,
         browser: parsed.browser,
@@ -604,10 +632,23 @@ async function startServer() {
       return res.status(400).json({ message: "events array is required." });
     }
 
+    let employeeId = req.user.userId ?? null;
+    const userToken = req.headers["x-user-token"];
+    if (userToken) {
+      try {
+        const decoded = decodeToken(userToken);
+        if (decoded.userId) {
+          employeeId = decoded.userId;
+        }
+      } catch (err) {
+        console.error(`Invalid user token in events batch: ${err.message}`);
+      }
+    }
+
     try {
       const result = await processEvents({
         orgId: req.user.org_id,
-        employeeId: req.user.userId ?? null,
+        employeeId: employeeId,
         deviceId: req.user.device_id ?? null,
         incomingEvents: events
       });

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Browser Activity Audit & Compliance Platform",
+  "name": "Broditor",
   "version": "1.0.0",
   "description": "Captures browser activity and syncs audit events to the Browser Activity Audit & Compliance Platform.",
   "permissions": [
