@@ -72,12 +72,12 @@ export function Navbar({
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          <button
+          {/* <button
             type="button"
             className="hidden h-11 items-center rounded-[12px] bg-[#f4f5f7] px-5 text-sm font-medium text-[#1d1b24] xl:inline-flex"
           >
             Security guide
-          </button>
+          </button> */}
 
           <button
             type="button"

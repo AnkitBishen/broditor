@@ -9,7 +9,7 @@ import { Card } from "@/components/Card";
 import { Modal } from "@/components/Modal";
 import { Table } from "@/components/Table";
 import type { TableColumn } from "@/lib/types";
-import { cx, initials } from "@/lib/utils";
+import { cx, initials, formatDate } from "@/lib/utils";
 
 type TeamResponse = {
   company: {
@@ -114,7 +114,7 @@ export function TeamClient({
       header: "Created",
       sortable: true,
       sortValue: (row) => new Date(row.createdAt).getTime(),
-      render: (row) => <span className="text-slate-300">{new Date(row.createdAt).toLocaleDateString()}</span>
+      render: (row) => <span className="text-slate-300">{formatDate(row.createdAt)}</span>
     }
   ];
 

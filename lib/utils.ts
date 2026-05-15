@@ -12,6 +12,14 @@ export function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
+export function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric"
+  }).format(new Date(value));
+}
+
 export function formatCompactNumber(value: number) {
   return new Intl.NumberFormat("en-US", {
     notation: "compact",

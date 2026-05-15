@@ -694,14 +694,16 @@ async function startServer() {
 
   app.get("/api/activity/timeline", verifyToken, requireUserOrAdmin, async (req, res) => {
     try {
+      const filters = {
+        employeeId: req.user.role === "admin" ? req.query.employee_id : req.user.userId,
+        category: req.query.category,
+        riskLevel: req.query.risk_level,
+        dateFrom: req.query.date_from,
+        dateTo: req.query.date_to
+      };
+
       return res.json({
-        items: await store.getActivityTimeline(req.user.org_id, {
-          employeeId: req.query.employee_id,
-          category: req.query.category,
-          riskLevel: req.query.risk_level,
-          dateFrom: req.query.date_from,
-          dateTo: req.query.date_to
-        })
+        items: await store.getActivityTimeline(req.user.org_id, filters)
       });
     } catch (error) {
       return res.status(500).json({ message: "Unable to load activity timeline.", detail: error.message });
@@ -710,6 +712,10 @@ async function startServer() {
 
   app.get("/api/activity/employee/:id/summary", verifyToken, requireUserOrAdmin, async (req, res) => {
     try {
+      // Non-admins can only see their own summary
+      if (req.user.role !== "admin" && req.params.id !== req.user.userId) {
+        return res.status(403).json({ message: "Access denied to other employees activity summary." });
+      }
       return res.json(await store.getEmployeeActivitySummary(req.user.org_id, req.params.id));
     } catch (error) {
       return res.status(500).json({ message: "Unable to load employee summary.", detail: error.message });
@@ -723,6 +729,10 @@ async function startServer() {
     }
 
     try {
+      // Non-admins can only see their own sessions
+      if (req.user.role !== "admin" && req.params.id !== req.user.userId) {
+        return res.status(403).json({ message: "Access denied to other employees activity sessions." });
+      }
       return res.json({
         items: await store.getEmployeeSession(req.user.org_id, req.params.id, eventId)
       });
@@ -733,13 +743,15 @@ async function startServer() {
 
   app.get("/api/alerts", verifyToken, requireUserOrAdmin, async (req, res) => {
     try {
+      const filters = {
+        status: req.query.status,
+        severity: req.query.severity,
+        type: req.query.type,
+        employeeId: req.user.role === "admin" ? req.query.employee_id : req.user.userId
+      };
+
       return res.json({
-        items: await store.listAlerts(req.user.org_id, {
-          status: req.query.status,
-          severity: req.query.severity,
-          type: req.query.type,
-          employeeId: req.query.employee_id
-        })
+        items: await store.listAlerts(req.user.org_id, filters)
       });
     } catch (error) {
       return res.status(500).json({ message: "Unable to load alerts.", detail: error.message });
@@ -827,14 +839,17 @@ async function startServer() {
   });
 
   app.post("/api/admin/users", verifyToken, requireAdmin, async (req, res) => {
+    console.log("[SERVER] POST /api/admin/users - Payload:", JSON.stringify(req.body));
     const parsed = validateAdminUserInput(req.body);
     if (parsed.error) {
+      console.error("[SERVER] Validation error:", parsed.error);
       return res.status(400).json({ message: parsed.error });
     }
 
     try {
       const existingUser = await store.findUserByEmail(parsed.email);
       if (existingUser) {
+        console.warn("[SERVER] User already exists:", parsed.email);
         return res.status(409).json({ message: "A user with that email already exists." });
       }
 
@@ -847,6 +862,7 @@ async function startServer() {
         role: parsed.role
       });
 
+      console.log("[SERVER] User created successfully. ID:", user.id);
       return res.status(201).json({
         user: {
           id: user.id,
@@ -863,8 +879,10 @@ async function startServer() {
 
   app.get("/api/admin/extension", verifyToken, requireAdmin, async (req, res) => {
     try {
+      console.log("[SERVER] GET /api/admin/extension - Org ID:", req.user.org_id);
       const organization = await store.getExtensionDownloadInfo(req.user.org_id);
       if (!organization) {
+        console.warn("[SERVER] Organization not found for ID:", req.user.org_id);
         return res.status(404).json({ message: "Organization not found." });
       }
 
@@ -886,6 +904,7 @@ async function startServer() {
         }
       });
     } catch (error) {
+      console.error("[SERVER] Error loading extension setup:", error);
       return res.status(500).json({ message: "Unable to load extension setup.", detail: error.message });
     }
   });

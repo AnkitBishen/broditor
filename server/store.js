@@ -61,25 +61,43 @@ class PostgresStore {
 
   async getExtensionDownloadInfo(orgId) {
     const result = await this.pool.query(
-      `select id, name, plan, status, extension_api_key_hash, extension_download_count, extension_last_downloaded_at
-       from organizations
-       where id = $1
-       limit 1`,
+      `select * from organizations where id = $1 limit 1`,
       [orgId]
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      name: row.name,
+      plan: row.plan || "starter",
+      status: row.status || "active",
+      extension_api_key_hash: row.extension_api_key_hash || "UNCONFIGURED",
+      extension_download_count: parseInt(row.extension_download_count || 0, 10),
+      extension_last_downloaded_at: row.extension_last_downloaded_at || null
+    };
   }
 
   async recordExtensionDownload(orgId) {
     const result = await this.pool.query(
       `update organizations
-       set extension_download_count = extension_download_count + 1,
+       set extension_download_count = coalesce(extension_download_count, 0) + 1,
            extension_last_downloaded_at = now()
        where id = $1
-       returning id, name, plan, status, extension_download_count, extension_last_downloaded_at`,
+       returning *`,
       [orgId]
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+    
+    return {
+      id: row.id,
+      name: row.name,
+      plan: row.plan || "starter",
+      status: row.status || "active",
+      extension_download_count: parseInt(row.extension_download_count || 0, 10),
+      extension_last_downloaded_at: row.extension_last_downloaded_at
+    };
   }
 
   async getOrganizationByApiKey(orgId) {
