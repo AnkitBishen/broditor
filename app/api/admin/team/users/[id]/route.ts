@@ -37,7 +37,7 @@ export async function PATCH(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error(`[PROXY] Error in PATCH /api/admin/team/users/${id}:`, error);
+    // console.error(`[PROXY] Error in PATCH /api/admin/team/users/${id}:`, error);
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Unable to update user role." },
       { status: 400 }
