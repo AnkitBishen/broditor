@@ -35,6 +35,7 @@ create table if not exists organizations (
   name text not null,
   plan org_plan not null default 'starter',
   status org_status not null default 'active',
+  owner_id uuid,
   extension_api_key_hash text not null default 'UNCONFIGURED',
   extension_download_count integer not null default 0,
   extension_last_downloaded_at timestamptz,
@@ -51,6 +52,7 @@ create table if not exists organizations (
 alter table organizations add column if not exists plan org_plan not null default 'starter';
 alter table organizations alter column plan set default 'starter';
 alter table organizations add column if not exists status org_status not null default 'active';
+alter table organizations add column if not exists owner_id uuid;
 alter table organizations add column if not exists extension_api_key_hash text not null default 'UNCONFIGURED';
 alter table organizations add column if not exists extension_download_count integer not null default 0;
 alter table organizations add column if not exists extension_last_downloaded_at timestamptz;

@@ -6,11 +6,14 @@ import { useMemo, useState } from "react";
 import {
   ChevronRight,
   Download,
-  HandHelping,
+  Settings ,
   LayoutGrid,
   PanelLeftClose,
   UserCircle2,
-  UsersRound
+  UsersRound,
+  SquareChartGantt,
+  LayoutDashboard,
+  Megaphone
 } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
@@ -65,32 +68,34 @@ export function Sidebar({
   const groups = useMemo<SidebarGroup[]>(() => {
     const dashboardItems = [
       { href: dashboardHref, label: "Overview" },
-      ...(currentUser?.role === "admin" ? [{ href: "/team", label: "Teams" }] : []),
+      // ...(currentUser?.role === "admin" ? [{ href: "/team", label: "Teams" }] : []),
       { href: "/analytics", label: "Analytics" },
-      ...(currentUser?.role === "admin" ? [{ href: "/extension-setup", label: "Extension setup" }] : [])
+      // ...(currentUser?.role === "admin" ? [{ href: "/extension-setup", label: "Extension setup" }] : [])
     ];
 
     return [
-      // {
-      //   key: "workspace",
-      //   label: currentUser?.companyName ?? "Browser Audit",
-      //   icon: LayoutGrid,
-      //   href: dashboardHref
-      // },
       {
         key: "dashboard",
         label: "Dashboard",
-        icon: UsersRound,
-        items: dashboardItems
+        icon: LayoutDashboard,
+        href: dashboardHref
+        // items: dashboardItems
       },
       {
         key: "events",
         label: "Events",
-        icon: LayoutGrid,
+        icon: SquareChartGantt,
         items: [
           { href: "/activity", label: "Activity" },
-          { href: "/alerts", label: "Alerts" }
+          // { href: "/alerts", label: "Alerts" }
         ]
+      },
+      {
+        key: "alerts",
+        label: "Alerts",
+        icon: Megaphone ,
+        href: "/alerts"
+        // items: dashboardItems
       },
       // {
       //   key: "code",
@@ -131,6 +136,12 @@ export function Sidebar({
       // }
       ...(currentUser?.role === "admin"
         ? [
+            {
+              key: "team",
+              label: "Teams",
+              icon: UsersRound,
+              href: "/team"
+            },
             {
               key: "extension",
               label: "Extension",
@@ -181,9 +192,11 @@ export function Sidebar({
                 href={dashboardHref}
                 className="mt-3 flex items-center gap-3 rounded-[14px] bg-[#44556f] px-3 py-3 text-white"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[#f4f5f7] text-sm font-bold text-[#fc6f41]">
-                  BA
-                </div>
+                <img 
+                  src="/logo.png" 
+                  alt="Broditor" 
+                  className="h-10 w-10 shrink-0 rounded-[10px] object-cover" 
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">{currentUser?.companyName ?? "Browser Audit"}</p>
                 </div>
@@ -193,9 +206,13 @@ export function Sidebar({
             <div className="flex justify-center">
               <Link
                 href={dashboardHref}
-                className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#f4f5f7] font-bold text-[#fc6f41]"
+                className="flex h-11 w-11 items-center justify-center rounded-[14px] overflow-hidden"
               >
-                BA
+                <img 
+                  src="/logo.png" 
+                  alt="Broditor" 
+                  className="h-full w-full object-cover" 
+                />
               </Link>
             </div>
           )}
@@ -289,7 +306,7 @@ export function Sidebar({
         <div className={cx("space-y-1 border-t border-white/[0.08] px-2 py-3", collapsed && "px-1.5")}>
           {([
             // { href: "/analytics", label: "What's new", icon: Activity, bubble: "5" },
-            { href: "/settings", label: "Settings", icon: HandHelping },
+            { href: "/settings", label: "Settings", icon: Settings },
             { href: "/profile", label: "Profile", icon: UserCircle2 }
           ] as Array<{ href: string; label: string; icon: LucideIcon; bubble?: string }>).map((item) => {
             const Icon = item.icon;

@@ -9,7 +9,7 @@ const bcrypt = require("bcryptjs");
 const express = require("express");
 const jwt = require("jsonwebtoken");
 
-const { requireAdmin, requireUserOrAdmin, verifyIngestionToken, verifyToken } = require("./auth-middleware");
+const { requireAdmin, requireUserOrAdmin, verifyIngestionToken, verifyToken, decodeToken } = require("./auth-middleware");
 const { runAlertPipeline } = require("./services/alert-engine");
 const { deriveCategory, deriveDomain, deriveRiskLevel } = require("./services/enrichment");
 const { createWebsocketHub } = require("./services/websocket-hub");
@@ -55,7 +55,8 @@ function serializeSessionUser(record) {
     role: record.role,
     companyId: record.org_id,
     companyName: record.org_name,
-    avatar: initials(record.full_name)
+    avatar: initials(record.full_name),
+    createdAt: record.created_at
   };
 }
 
@@ -371,9 +372,22 @@ async function startServer() {
   }
 
   const hub = createWebsocketHub(server, {
-    onRiskEvent: ({ orgId, deviceId, event }) => {
+    onRiskEvent: ({ orgId, deviceId, event, userToken }) => {
+      let employeeId = null;
+      if (userToken) {
+        try {
+          const decoded = decodeToken(userToken);
+          if (decoded.userId) {
+            employeeId = decoded.userId;
+          }
+        } catch (err) {
+          console.error(`Invalid user token in WebSocket risk event: ${err.message}`);
+        }
+      }
+
       processEvents({
         orgId,
+        employeeId,
         deviceId,
         incomingEvents: [event]
       }).catch((error) => {
@@ -421,6 +435,10 @@ async function startServer() {
         role
       });
 
+      if (userCount === 0) {
+        await store.setOrganizationOwner(organization.id, user.id);
+      }
+
       return res.status(201).json({
         message: role === "admin" ? "Workspace created. You are the organization admin." : "User registered successfully.",
         user: serializeSessionUser({
@@ -431,6 +449,37 @@ async function startServer() {
       });
     } catch (error) {
       return res.status(500).json({ message: "Unable to register user.", detail: error.message });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "Please provide a valid email address." });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long." });
+    }
+
+    try {
+      const existingUser = await store.findUserByEmail(email);
+      if (!existingUser) {
+        return res.status(404).json({ message: "No account found with that email address." });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 12);
+      const updated = await store.updateUserPassword(email, passwordHash);
+
+      if (!updated) {
+        return res.status(500).json({ message: "Unable to update password." });
+      }
+
+      return res.json({ message: "Password has been reset successfully." });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to reset password.", detail: error.message });
     }
   });
 
@@ -512,16 +561,152 @@ async function startServer() {
     }
   });
 
+  app.patch("/api/me", verifyToken, async (req, res) => {
+    const fullName = String(req.body.fullName || "").trim();
+    if (fullName.length < 2) {
+      return res.status(400).json({ message: "Full name must be at least 2 characters long." });
+    }
+
+    try {
+      const user = await store.updateUser(req.user.userId, { fullName });
+      const record = await store.getUserWithOrganizationById(req.user.userId);
+      return res.json({ message: "Profile updated.", user: serializeSessionUser(record) });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to update profile.", detail: error.message });
+    }
+  });
+
+  app.post("/api/auth/change-password", verifyToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: "Invalid password data." });
+    }
+
+    try {
+      const record = await store.getUserWithOrganizationById(req.user.userId);
+      const matches = await bcrypt.compare(currentPassword, record.password);
+      if (!matches) {
+        return res.status(401).json({ message: "Incorrect current password." });
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await store.updateUserPassword(record.email, passwordHash);
+      return res.json({ message: "Password changed successfully." });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to change password.", detail: error.message });
+    }
+  });
+
+  app.patch("/api/admin/settings", verifyToken, requireAdmin, async (req, res) => {
+    const { organizationName, settings } = req.body;
+
+    try {
+      await store.updateOrganization(req.user.org_id, {
+        name: organizationName,
+        settings: settings
+      });
+      return res.json({ message: "Settings updated successfully." });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to update settings.", detail: error.message });
+    }
+  });
+
+  app.get("/api/admin/settings", verifyToken, requireAdmin, async (req, res) => {
+    try {
+      const organization = await store.getOrganizationById(req.user.org_id);
+      return res.json({
+        organizationName: organization.name,
+        settings: organization.settings
+      });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to load settings.", detail: error.message });
+    }
+  });
+
+  app.post("/api/admin/blocklist", verifyToken, requireAdmin, async (req, res) => {
+    const { domain, category } = req.body;
+    if (!domain || !category) {
+      return res.status(400).json({ message: "Domain and category are required." });
+    }
+
+    try {
+      const entry = await store.addBlocklistEntry(req.user.org_id, { domain, category });
+      return res.status(201).json({ message: "Domain added to blocklist.", entry });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to add to blocklist.", detail: error.message });
+    }
+  });
+
+  app.delete("/api/admin/blocklist/:id", verifyToken, requireAdmin, async (req, res) => {
+    try {
+      const deleted = await store.deleteBlocklistEntry(req.user.org_id, req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Blocklist entry not found." });
+      }
+      return res.json({ message: "Domain removed from blocklist." });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to remove from blocklist.", detail: error.message });
+    }
+  });
+
+  app.patch("/api/admin/org/suspend", verifyToken, requireAdmin, async (req, res) => {
+    try {
+      await store.suspendOrganization(req.user.org_id);
+      return res.json({ message: "Organization suspended." });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to suspend organization.", detail: error.message });
+    }
+  });
+
+  app.delete("/api/admin/events", verifyToken, requireAdmin, async (req, res) => {
+    try {
+      await store.deleteEventsByOrganization(req.user.org_id);
+      return res.json({ message: "All events deleted." });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to delete events.", detail: error.message });
+    }
+  });
+
+  app.get("/api/devices/mine", verifyToken, async (req, res) => {
+    try {
+      const devices = await store.getDevicesByEmployee(req.user.userId, req.user.org_id);
+      return res.json(devices.map(d => ({
+        id: d.id,
+        browser: d.browser,
+        os: d.os,
+        lastSeen: d.last_seen_at,
+        createdAt: d.registered_at
+      })));
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to load your devices.", detail: error.message });
+    }
+  });
+
+  // devices registeration means extension are installing
   app.post("/api/devices/register", verifyIngestionToken, async (req, res) => {
     const parsed = validateDeviceRegistration(req.body);
     if (parsed.error) {
       return res.status(400).json({ message: parsed.error });
     }
 
+    let employeeId = parsed.employeeId;
+    const userToken = req.headers["x-user-token"];
+    if (userToken) {
+      try {
+        const decoded = decodeToken(userToken);
+        if (decoded.userId) {
+          employeeId = decoded.userId;
+        }
+      } catch (err) {
+        // Log but don't fail, maybe the user token is just expired
+        console.error(`Invalid user token in device registration: ${err.message}`);
+      }
+    }
+
     try {
       const device = await store.registerDevice({
         id: parsed.deviceId,
-        employeeId: parsed.employeeId ?? req.user.userId ?? null,
+        employeeId: employeeId ?? req.user.userId ?? null,
         orgId: req.user.org_id,
         deviceFingerprint: parsed.deviceFingerprint,
         browser: parsed.browser,
@@ -573,10 +758,23 @@ async function startServer() {
       return res.status(400).json({ message: "events array is required." });
     }
 
+    let employeeId = req.user.userId ?? null;
+    const userToken = req.headers["x-user-token"];
+    if (userToken) {
+      try {
+        const decoded = decodeToken(userToken);
+        if (decoded.userId) {
+          employeeId = decoded.userId;
+        }
+      } catch (err) {
+        console.error(`Invalid user token in events batch: ${err.message}`);
+      }
+    }
+
     try {
       const result = await processEvents({
         orgId: req.user.org_id,
-        employeeId: req.user.userId ?? null,
+        employeeId: employeeId,
         deviceId: req.user.device_id ?? null,
         incomingEvents: events
       });
@@ -622,14 +820,16 @@ async function startServer() {
 
   app.get("/api/activity/timeline", verifyToken, requireUserOrAdmin, async (req, res) => {
     try {
+      const filters = {
+        employeeId: req.user.role === "admin" ? req.query.employee_id : req.user.userId,
+        category: req.query.category,
+        riskLevel: req.query.risk_level,
+        dateFrom: req.query.date_from,
+        dateTo: req.query.date_to
+      };
+
       return res.json({
-        items: await store.getActivityTimeline(req.user.org_id, {
-          employeeId: req.query.employee_id,
-          category: req.query.category,
-          riskLevel: req.query.risk_level,
-          dateFrom: req.query.date_from,
-          dateTo: req.query.date_to
-        })
+        items: await store.getActivityTimeline(req.user.org_id, filters)
       });
     } catch (error) {
       return res.status(500).json({ message: "Unable to load activity timeline.", detail: error.message });
@@ -638,6 +838,10 @@ async function startServer() {
 
   app.get("/api/activity/employee/:id/summary", verifyToken, requireUserOrAdmin, async (req, res) => {
     try {
+      // Non-admins can only see their own summary
+      if (req.user.role !== "admin" && req.params.id !== req.user.userId) {
+        return res.status(403).json({ message: "Access denied to other employees activity summary." });
+      }
       return res.json(await store.getEmployeeActivitySummary(req.user.org_id, req.params.id));
     } catch (error) {
       return res.status(500).json({ message: "Unable to load employee summary.", detail: error.message });
@@ -651,6 +855,10 @@ async function startServer() {
     }
 
     try {
+      // Non-admins can only see their own sessions
+      if (req.user.role !== "admin" && req.params.id !== req.user.userId) {
+        return res.status(403).json({ message: "Access denied to other employees activity sessions." });
+      }
       return res.json({
         items: await store.getEmployeeSession(req.user.org_id, req.params.id, eventId)
       });
@@ -661,13 +869,15 @@ async function startServer() {
 
   app.get("/api/alerts", verifyToken, requireUserOrAdmin, async (req, res) => {
     try {
+      const filters = {
+        status: req.query.status,
+        severity: req.query.severity,
+        type: req.query.type,
+        employeeId: req.user.role === "admin" ? req.query.employee_id : req.user.userId
+      };
+
       return res.json({
-        items: await store.listAlerts(req.user.org_id, {
-          status: req.query.status,
-          severity: req.query.severity,
-          type: req.query.type,
-          employeeId: req.query.employee_id
-        })
+        items: await store.listAlerts(req.user.org_id, filters)
       });
     } catch (error) {
       return res.status(500).json({ message: "Unable to load alerts.", detail: error.message });
@@ -734,7 +944,8 @@ async function startServer() {
         company: {
           id: organization?.id ?? req.user.org_id,
           name: organization?.name ?? "Organization",
-          totalUsers: users.length
+          totalUsers: users.length,
+          ownerId: organization?.owner_id
         },
         users: users.map((user) => ({
           id: user.id,
@@ -754,15 +965,52 @@ async function startServer() {
     }
   });
 
+  app.delete("/api/admin/users/:id", verifyToken, requireAdmin, async (req, res) => {
+    try {
+      const deleted = await store.deleteUser(req.user.org_id, req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "User not found." });
+      }
+      return res.json({ message: "User deleted successfully." });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to delete user.", detail: error.message });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/role", verifyToken, requireAdmin, async (req, res) => {
+    console.log(`[SERVER] PATCH /api/admin/users/${req.params.id}/role - Payload:`, JSON.stringify(req.body));
+    const role = String(req.body.role || "").trim().toLowerCase();
+    if (!["admin", "user"].includes(role)) {
+      console.error(`[SERVER] Invalid role: ${role}`);
+      return res.status(400).json({ message: "Role must be admin or user." });
+    }
+
+    try {
+      const user = await store.updateUserRole(req.user.org_id, req.params.id, role);
+      if (!user) {
+        console.error(`[SERVER] User not found: ${req.params.id}`);
+        return res.status(404).json({ message: "User not found." });
+      }
+      console.log(`[SERVER] User role updated successfully for ID: ${req.params.id}`);
+      return res.json({ message: "User role updated successfully.", user });
+    } catch (error) {
+      console.error(`[SERVER] Error updating user role: ${error.message}`);
+      return res.status(500).json({ message: "Unable to update user role.", detail: error.message });
+    }
+  });
+
   app.post("/api/admin/users", verifyToken, requireAdmin, async (req, res) => {
+    console.log("[SERVER] POST /api/admin/users - Payload:", JSON.stringify(req.body));
     const parsed = validateAdminUserInput(req.body);
     if (parsed.error) {
+      console.error("[SERVER] Validation error:", parsed.error);
       return res.status(400).json({ message: parsed.error });
     }
 
     try {
       const existingUser = await store.findUserByEmail(parsed.email);
       if (existingUser) {
+        console.warn("[SERVER] User already exists:", parsed.email);
         return res.status(409).json({ message: "A user with that email already exists." });
       }
 
@@ -775,6 +1023,7 @@ async function startServer() {
         role: parsed.role
       });
 
+      console.log("[SERVER] User created successfully. ID:", user.id);
       return res.status(201).json({
         user: {
           id: user.id,
@@ -791,8 +1040,10 @@ async function startServer() {
 
   app.get("/api/admin/extension", verifyToken, requireAdmin, async (req, res) => {
     try {
+      console.log("[SERVER] GET /api/admin/extension - Org ID:", req.user.org_id);
       const organization = await store.getExtensionDownloadInfo(req.user.org_id);
       if (!organization) {
+        console.warn("[SERVER] Organization not found for ID:", req.user.org_id);
         return res.status(404).json({ message: "Organization not found." });
       }
 
@@ -814,6 +1065,7 @@ async function startServer() {
         }
       });
     } catch (error) {
+      console.error("[SERVER] Error loading extension setup:", error);
       return res.status(500).json({ message: "Unable to load extension setup.", detail: error.message });
     }
   });

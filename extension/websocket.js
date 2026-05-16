@@ -1,5 +1,5 @@
 import { getCachedManagedConfig } from "./config.js";
-import { getAuthToken, setWebsocketBackoffMs, getWebsocketBackoffMs } from "./storage.js";
+import { getAuthToken, getUserToken, setWebsocketBackoffMs, getWebsocketBackoffMs } from "./storage.js";
 
 let socket = null;
 let reconnectTimer = null;
@@ -52,6 +52,10 @@ export async function emitRiskEvent(event) {
     return false;
   }
 
-  liveSocket.send(JSON.stringify({ event }));
+  const userToken = await getUserToken();
+  liveSocket.send(JSON.stringify({ 
+    event,
+    userToken: userToken || null
+  }));
   return true;
 }

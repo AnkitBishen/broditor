@@ -146,3 +146,5 @@ vite.config.ts.timestamp-*
 .vscode/
 graphify-out/
 extension_/
+.agent/
+.gemini/

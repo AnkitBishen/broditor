@@ -1,12 +1,14 @@
 import { getCachedManagedConfig } from "./config.js";
 import {
   getAuthToken,
+  getUserToken,
   getBlocklist,
   getOrCreateDeviceId,
   getOrgSettings,
   getQueue,
   removeAcknowledgedEvents,
   setAuthToken,
+  setUserToken,
   setBlocklist,
   setOrgSettings
 } from "./storage.js";
@@ -21,11 +23,13 @@ function getPlatformSnapshot() {
 async function apiRequest(path, init = {}) {
   const config = await getCachedManagedConfig();
   const token = await getAuthToken();
+  const userToken = await getUserToken();
   const response = await fetch(`${config.apiEndpoint}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(userToken ? { "X-User-Token": userToken } : {}),
       ...(init.headers || {})
     }
   });
@@ -36,6 +40,24 @@ async function apiRequest(path, init = {}) {
   }
 
   return response.json();
+}
+
+export async function login(email, password) {
+  const config = await getCachedManagedConfig();
+  
+  const data = await fetch(`${config.apiEndpoint}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error(`Login failed (${response.status})`);
+    }
+    return response.json();
+  });
+
+  await setUserToken(data.token);
+  return data;
 }
 
 export async function verifyExtensionCredentials() {

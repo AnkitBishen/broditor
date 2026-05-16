@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { api } from "@/lib/api";
@@ -16,6 +16,11 @@ export function AuthProvider({
   children: ReactNode;
 }) {
   const [user, setUser] = useState<SessionUser | null>(initialUser);
+
+  // Sync state when initialUser changes (e.g., after login/logout + router.refresh())
+  useEffect(() => {
+    setUser(initialUser);
+  }, [initialUser]);
 
   const value: AuthContextValue = {
     user,

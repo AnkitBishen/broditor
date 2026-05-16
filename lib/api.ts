@@ -39,6 +39,33 @@ export const api = {
       body: JSON.stringify(payload)
     });
   },
+  sendOtp(email: string, fullName: string) {
+    return fetch("/api/session/send-otp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, fullName })
+    });
+  },
+  verifyOtpAndRegister(payload: RegisterPayload & { otp: string }) {
+    return fetch("/api/session/verify-otp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+  },
+  resetPassword(payload: { email: string; otp: string; password: string }) {
+    return fetch("/api/session/reset-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+  },
   logout() {
     return fetch("/api/session/logout", {
       method: "POST"

@@ -8,7 +8,10 @@ import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   title: "Browser Activity Audit & Compliance Platform",
-  description: "GitLab-inspired B2B SaaS dashboard for browser monitoring, audit trails, and compliance workflows."
+  description: "GitLab-inspired B2B SaaS dashboard for browser monitoring, audit trails, and compliance workflows.",
+  icons: {
+    icon: "/logo.png"
+  }
 };
 
 export default async function RootLayout({

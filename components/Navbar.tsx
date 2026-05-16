@@ -48,10 +48,12 @@ export function Navbar({
           </button>
 
           <Link href="/dashboard" className="flex items-center gap-3 text-white">
-            <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#fc6f41] font-bold text-[#1e1b25]">
-              BA
-            </div>
-            <span className="hidden text-[15px] font-semibold sm:inline">Browser Audit</span>
+            <img 
+              src="/logo.png" 
+              alt="Broditor" 
+              className="h-9 w-9 shrink-0 rounded-[10px] object-cover" 
+            />
+            <span className="hidden text-[15px] font-semibold sm:inline">Broditor</span>
           </Link>
         </div>
 
@@ -70,12 +72,12 @@ export function Navbar({
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          <button
+          {/* <button
             type="button"
             className="hidden h-11 items-center rounded-[12px] bg-[#f4f5f7] px-5 text-sm font-medium text-[#1d1b24] xl:inline-flex"
           >
             Security guide
-          </button>
+          </button> */}
 
           <button
             type="button"

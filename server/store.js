@@ -33,18 +33,53 @@ class PostgresStore {
     return result.rows[0] ?? null;
   }
 
-  async createOrganization({ name, extensionApiKeyHash, plan = "starter", status = "active" }) {
+  async createOrganization({ name, extensionApiKeyHash, plan = "starter", status = "active", ownerId = null }) {
     const result = await this.pool.query(
-      `insert into organizations (name, extension_api_key_hash, plan, status)
-       values ($1, $2, $3, $4)
+      `insert into organizations (name, extension_api_key_hash, plan, status, owner_id)
+       values ($1, $2, $3, $4, $5)
        returning *`,
-      [normalize(name), extensionApiKeyHash, plan, status]
+      [normalize(name), extensionApiKeyHash, plan, status, ownerId]
     );
     return result.rows[0];
   }
 
+  async setOrganizationOwner(orgId, ownerId) {
+    await this.pool.query(
+      "update organizations set owner_id = $2 where id = $1",
+      [orgId, ownerId]
+    );
+  }
+
   async getOrganizationById(id) {
     const result = await this.pool.query("select * from organizations where id = $1 limit 1", [id]);
+    return result.rows[0] ?? null;
+  }
+
+  async deleteUser(orgId, userId) {
+    // Cannot delete the owner
+    const org = await this.getOrganizationById(orgId);
+    if (org.owner_id === userId) {
+      throw new Error("Cannot delete the organization owner.");
+    }
+
+    const result = await this.pool.query(
+      "delete from users where id = $1 and org_id = $2 returning id",
+      [userId, orgId]
+    );
+    return result.rowCount > 0;
+  }
+
+  async updateUserRole(orgId, userId, role) {
+    // Cannot change owner's role
+    const org = await this.getOrganizationById(orgId);
+    if (org.owner_id === userId) {
+      throw new Error("Cannot change role of the organization owner.");
+    }
+
+    const result = await this.pool.query(
+      "update users set role = $3 where id = $1 and org_id = $2 returning *",
+      [userId, orgId, role]
+    );
     return result.rows[0] ?? null;
   }
 
@@ -61,25 +96,43 @@ class PostgresStore {
 
   async getExtensionDownloadInfo(orgId) {
     const result = await this.pool.query(
-      `select id, name, plan, status, extension_api_key_hash, extension_download_count, extension_last_downloaded_at
-       from organizations
-       where id = $1
-       limit 1`,
+      `select * from organizations where id = $1 limit 1`,
       [orgId]
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      name: row.name,
+      plan: row.plan || "starter",
+      status: row.status || "active",
+      extension_api_key_hash: row.extension_api_key_hash || "UNCONFIGURED",
+      extension_download_count: parseInt(row.extension_download_count || 0, 10),
+      extension_last_downloaded_at: row.extension_last_downloaded_at || null
+    };
   }
 
   async recordExtensionDownload(orgId) {
     const result = await this.pool.query(
       `update organizations
-       set extension_download_count = extension_download_count + 1,
+       set extension_download_count = coalesce(extension_download_count, 0) + 1,
            extension_last_downloaded_at = now()
        where id = $1
-       returning id, name, plan, status, extension_download_count, extension_last_downloaded_at`,
+       returning *`,
       [orgId]
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+    
+    return {
+      id: row.id,
+      name: row.name,
+      plan: row.plan || "starter",
+      status: row.status || "active",
+      extension_download_count: parseInt(row.extension_download_count || 0, 10),
+      extension_last_downloaded_at: row.extension_last_downloaded_at
+    };
   }
 
   async getOrganizationByApiKey(orgId) {
@@ -158,6 +211,95 @@ class PostgresStore {
        where u.org_id = $1
        order by u.created_at asc`,
       [orgId]
+    );
+    return result.rows;
+  }
+
+  async updateUserPassword(email, passwordHash) {
+    const result = await this.pool.query(
+      `update users
+       set password = $2
+       where lower(email) = lower($1)
+       returning id, full_name, email, role, org_id`,
+      [normalize(email), passwordHash]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateUser(userId, { fullName }) {
+    const result = await this.pool.query(
+      `update users
+       set full_name = $2
+       where id = $1
+       returning *`,
+      [userId, normalize(fullName)]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateOrganization(orgId, { name, settings }) {
+    const clauses = [];
+    const values = [orgId];
+
+    if (name) {
+      values.push(normalize(name));
+      clauses.push(`name = $${values.length}`);
+    }
+
+    if (settings) {
+      values.push(JSON.stringify(settings));
+      clauses.push(`settings = settings || $${values.length}::jsonb`);
+    }
+
+    if (clauses.length === 0) return null;
+
+    const result = await this.pool.query(
+      `update organizations
+       set ${clauses.join(", ")}
+       where id = $1
+       returning *`,
+      values
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async addBlocklistEntry(orgId, { domain, category }) {
+    const result = await this.pool.query(
+      `insert into blocklist (org_id, domain, category)
+       values ($1, $2, $3)
+       on conflict (org_id, lower(domain))
+       do update set category = excluded.category
+       returning *`,
+      [orgId, normalize(domain).toLowerCase(), normalize(category)]
+    );
+    return result.rows[0];
+  }
+
+  async deleteBlocklistEntry(orgId, id) {
+    const result = await this.pool.query(
+      "delete from blocklist where id = $1 and org_id = $2 returning id",
+      [id, orgId]
+    );
+    return result.rowCount > 0;
+  }
+
+  async suspendOrganization(orgId) {
+    const result = await this.pool.query(
+      "update organizations set status = 'suspended' where id = $1 returning *",
+      [orgId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async deleteEventsByOrganization(orgId) {
+    await this.pool.query("delete from events where org_id = $1", [orgId]);
+    return true;
+  }
+
+  async getDevicesByEmployee(employeeId, orgId) {
+    const result = await this.pool.query(
+      "select * from devices where employee_id = $1 and org_id = $2 order by last_seen_at desc",
+      [employeeId, orgId]
     );
     return result.rows;
   }

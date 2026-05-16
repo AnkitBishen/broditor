@@ -91,20 +91,23 @@ export function ExtensionSetupClient({
 
   const credentialRows = [
     {
+      key: "org_id",
       label: "Organisation ID",
       value: data.organization.id,
-      description: "Identifies which tenant owns the browser events and devices."
+      description: "This unique identifier links browser events to your specific workspace. It is required for multi-tenant data isolation."
     },
     {
+      key: "api_key",
       label: "API Key",
       value: apiKey || (data.apiKeyConfigured ? "Generate a new key to view and copy it" : "No key generated yet"),
-      description: "Secret credential used once by the extension to exchange for an ingestion token.",
+      description: "A secret key used to authenticate this device during setup. For security, we only show it once after generation.",
       secret: true
     },
     {
+      key: "api_endpoint",
       label: "API Endpoint",
       value: data.apiEndpoint,
-      description: "Backend base URL the extension calls for verification, config, events, and device registration."
+      description: "The secure URL where the extension sends audit data. Ensure this is reachable from your managed browsers."
     }
   ];
 
@@ -119,8 +122,8 @@ export function ExtensionSetupClient({
           </div>
           <h1 className="page-title mt-3">Browser extension deployment</h1>
           <p className="page-copy mt-3 max-w-3xl">
-            Download the extension bundle, copy tenant credentials, and follow the browser setup steps to start
-            collecting audit activity from managed browsers.
+            To start auditing browser activity, you must deploy the extension to your team's browsers. 
+            Follow the steps below to download the package, configure credentials, and activate monitoring.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -145,8 +148,13 @@ export function ExtensionSetupClient({
         <Card title="Extension package" eyebrow="Download control">
           <div className="space-y-5">
             <p className="text-sm leading-7 text-slate-400">
-              Starter plan workspaces can download the extension package up to two times. Paid plans can download
-              whenever they need to redeploy or refresh managed devices.
+              The extension bundle contains the manifest and logic required to monitor browser events. 
+              {data.organization.plan === "starter" && (
+                <span className="block mt-2 font-medium text-amber-400">
+                  Note: Starter plan workspaces are limited to two downloads. 
+                  Contact support or upgrade for unlimited deployments.
+                </span>
+              )}
             </p>
             <button
               type="button"
@@ -169,8 +177,12 @@ export function ExtensionSetupClient({
 
         <Card title="Credentials" eyebrow="Copy into extension options">
           <div className="space-y-4">
+            <p className="text-sm text-slate-400">
+              These credentials are used by the extension to securely connect to your workspace. 
+              You will need to enter these in the extension options page during the initial setup.
+            </p>
             {credentialRows.map((row) => (
-              <div key={row.label} className="rounded-[16px] border border-white/10 bg-white/[0.04] p-4">
+              <div key={row.key} className="rounded-[16px] border border-white/10 bg-white/[0.04] p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-white">{row.label}</p>
@@ -189,38 +201,93 @@ export function ExtensionSetupClient({
                 </div>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={rotateKey}
-              disabled={isRotating}
-              className="gitlab-button gap-2 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isRotating ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-              {data.apiKeyConfigured ? "Generate new API key" : "Generate API key"}
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={rotateKey}
+                disabled={isRotating}
+                className="gitlab-button gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isRotating ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                {data.apiKeyConfigured ? "Rotate API key" : "Generate API key"}
+              </button>
+            </div>
           </div>
         </Card>
       </div>
 
-      <Card title="Browser setup steps" eyebrow="Chrome / Chromium">
-        <div className="grid gap-4 md:grid-cols-2">
-          {[
-            "Download the extension ZIP from this page.",
-            "Extract the ZIP file on the employee or test machine.",
-            "Open Chrome and go to chrome://extensions.",
-            "Turn on Developer mode.",
-            "Click Load unpacked and choose the extracted browser-audit-extension folder.",
-            "Open the extension options page and paste Organisation ID, API Key, and API Endpoint.",
-            "Click Test Connection to verify credentials.",
-            "Click Save & Activate to register the device, sync config, and start auditing."
-          ].map((step, index) => (
-            <div key={step} className="flex gap-4 rounded-[16px] border border-white/10 bg-white/[0.04] p-4">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-white text-sm font-bold text-[#1f1b24]">
-                {index + 1}
-              </span>
-              <p className="text-sm leading-6 text-slate-300">{step}</p>
+      <Card title="Installation & Configuration" eyebrow="Follow these steps">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">1. Browser Installation</h3>
+            <div className="space-y-3">
+              {[
+                "Download and extract the extension ZIP package.",
+                "Open Chrome/Edge and navigate to `chrome://extensions`.",
+                "Enable 'Developer mode' in the top right corner.",
+                "Click 'Load unpacked' and select the extracted folder."
+              ].map((step, i) => (
+                <div key={i} className="flex gap-3 text-sm">
+                  <span className="text-amber-500 font-mono font-bold">{i+1}.</span>
+                  <span className="text-slate-300">{step}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">2. Credential Configuration</h3>
+            <div className="space-y-3">
+              {[
+                "Click the extension icon and select 'Options'.",
+                "Paste the Organisation ID and API Endpoint from above.",
+                "Generate a fresh API Key and paste it into the field.",
+                "Enter your personal user email and password.",
+                "Click 'Test Connection' then 'Save & Activate'."
+              ].map((step, i) => (
+                <div key={i} className="flex gap-3 text-sm">
+                  <span className="text-amber-500 font-mono font-bold">{i+1}.</span>
+                  <span className="text-slate-300">{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Credential Definitions" eyebrow="Understanding your security">
+        <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="panel-muted p-4 space-y-2">
+              <h4 className="text-sm font-bold text-white">Organisation ID</h4>
+              <p className="text-xs leading-5 text-slate-400">
+                A globally unique identifier for your tenant. It ensures that all events generated by the extension are routed strictly to your workspace and isolated from other companies.
+              </p>
+            </div>
+            <div className="panel-muted p-4 space-y-2">
+              <h4 className="text-sm font-bold text-white">API Key</h4>
+              <p className="text-xs leading-5 text-slate-400">
+                A temporary secret used to bootstrap the extension. When the extension first connects, it uses this key to register the device and exchange it for a long-lived, device-specific ingestion token.
+              </p>
+            </div>
+            <div className="panel-muted p-4 space-y-2">
+              <h4 className="text-sm font-bold text-white">API Endpoint</h4>
+              <p className="text-xs leading-5 text-slate-400">
+                The gateway URL for your auditing platform. The extension communicates with this endpoint to sync configurations, report activity, and receive real-time updates from the compliance engine.
+              </p>
+            </div>
+          </div>
+          
+          <div className="rounded-[16px] border border-sky-500/20 bg-sky-500/5 p-5">
+            <h4 className="text-sm font-bold text-sky-200">Configuring Auditing for Compliance</h4>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Once the extension is activated, it will automatically begin capturing navigation, dwell time, and file downloads. To fine-tune your compliance posture:
+            </p>
+            <ul className="mt-3 space-y-2 text-xs text-slate-400 list-disc list-inside">
+              <li>Visit the <strong>Settings</strong> page to adjust the idle timeout threshold and synchronization intervals.</li>
+              <li>Configure the <strong>Blocklist</strong> to monitor or prevent access to high-risk domains and categories.</li>
+              <li>Review the <strong>Alerts</strong> stream to triage potential policy violations in real-time.</li>
+            </ul>
+          </div>
         </div>
       </Card>
 

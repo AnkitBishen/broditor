@@ -82,7 +82,8 @@ function createWebsocketHub(server, handlers = {}) {
               tokenType: ws.tokenType,
               role: ws.role,
               deviceId: payload.deviceId ?? payload.device_id ?? null,
-              event: payload.event ?? payload
+              event: payload.event ?? payload,
+              userToken: payload.userToken ?? null
             });
           } catch {}
         });
