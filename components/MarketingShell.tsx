@@ -110,7 +110,7 @@ export async function MarketingShell({
                 alt="Broditor" 
                 className="h-9 w-9 shrink-0 rounded-[10px] object-cover" 
               />
-              <span className="font-semibold">Broditor - Browser Activity Audit & Compliance Platform</span>
+              <span className="font-semibold">Broditor · Built with ♥ by Ankit Singh</span>
             </div>
             <p className="mt-3 max-w-2xl leading-6">
               Browser monitoring, audit trails, and compliance workflows for teams that need visibility
@@ -119,8 +119,10 @@ export async function MarketingShell({
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.04] px-3 py-2">
-              <ShieldCheck className="h-4 w-4 text-[#66d782]" />
-              Security-first sessions
+              <a href="https://github.com/AnkitBishen" target="_blank">Github</a>
+            </span>
+             <span className="inline-flex items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.04] px-3 py-2">
+              <a href="https://www.linkedin.com/in/ankitsingh0181/" target="_blank">Linkedin</a>
             </span>
             {/* <Link href="/docs" className="rounded-[10px] border border-white/10 px-3 py-2 text-slate-200 hover:bg-white/[0.08]">
               Read docs
