@@ -1,7 +1,7 @@
 "use client";
 
-import { Plus, RefreshCcw } from "lucide-react";
-import { type FormEvent, useState, useTransition } from "react";
+import { Plus, RefreshCcw, Settings, Trash2, Edit2, Loader2 } from "lucide-react";
+import { type FormEvent, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/Badge";
@@ -16,6 +16,7 @@ type TeamResponse = {
     id: string;
     name: string;
     totalUsers: number;
+    ownerId?: string;
   };
   users: {
     id: string;
@@ -30,20 +31,15 @@ type TeamRow = {
   id: string;
   name: string;
   email: string;
-  role: "Admin" | "Viewer";
+  role: "admin" | "user";
   title: string;
   status: "Monitored" | "Pending";
-  risk: "Moderate" | "Low";
   createdAt: string;
   avatar: string;
 };
 
-function roleVariant(role: TeamRow["role"]) {
-  return role === "Admin" ? "role-admin" : "role-viewer";
-}
-
-function riskVariant(risk: TeamRow["risk"]) {
-  return risk === "Moderate" ? "info" : "success";
+function roleVariant(role: string) {
+  return role === "admin" ? "role-admin" : "role-viewer";
 }
 
 export function TeamClient({
@@ -57,14 +53,21 @@ export function TeamClient({
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Edit Role
+  const [editingUser, setEditUser] = useState<{ id: string, name: string, role: string } | null>(null);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+
+  // Delete User
+  const [deletingUser, setDeletingUser] = useState<{ id: string, name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const rows: TeamRow[] = data.users.map((user) => ({
     id: user.id,
     name: user.fullName,
     email: user.email,
-    role: user.role === "admin" ? "Admin" : "Viewer",
+    role: user.role,
     title: user.role === "admin" ? "Organization administrator" : "Monitored employee",
     status: "Monitored",
-    risk: user.role === "admin" ? "Moderate" : "Low",
     createdAt: user.createdAt,
     avatar: initials(user.fullName)
   }));
@@ -95,7 +98,7 @@ export function TeamClient({
       key: "role",
       header: "Role",
       sortable: true,
-      render: (row) => <Badge variant={roleVariant(row.role)}>{row.role}</Badge>
+      render: (row) => <Badge variant={roleVariant(row.role)} className="capitalize">{row.role}</Badge>
     },
     {
       key: "status",
@@ -104,17 +107,39 @@ export function TeamClient({
       render: (row) => <Badge variant="success">{row.status}</Badge>
     },
     {
-      key: "risk",
-      header: "Risk",
-      sortable: true,
-      render: (row) => <Badge variant={riskVariant(row.risk)}>{row.risk}</Badge>
-    },
-    {
       key: "createdAt",
       header: "Created",
       sortable: true,
       sortValue: (row) => new Date(row.createdAt).getTime(),
       render: (row) => <span className="text-slate-300">{formatDate(row.createdAt)}</span>
+    },
+    {
+      key: "actions",
+      header: "Settings",
+      className: "text-right",
+      render: (row) => {
+        const isOwner = data.company.ownerId === row.id;
+        if (isOwner) return <Badge variant="neutral">Owner</Badge>;
+
+        return (
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setEditUser({ id: row.id, name: row.name, role: row.role })}
+              className="text-slate-400 hover:text-white"
+              title="Edit Role"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setDeletingUser({ id: row.id, name: row.name })}
+              className="text-slate-400 hover:text-red-400"
+              title="Delete User"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        );
+      }
     }
   ];
 
@@ -140,20 +165,20 @@ export function TeamClient({
     try {
       const response = await fetch("/api/admin/team/users", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = await response.json().catch(() => ({}));
+      const resData = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.message || "Unable to create user.");
+        throw new Error(resData.message || "Unable to create user.");
       }
 
       setModalOpen(false);
       event.currentTarget.reset();
-      router.refresh();
+      startRefreshTransition(() => {
+        router.refresh();
+      });
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Unable to create user.");
     } finally {
@@ -161,14 +186,53 @@ export function TeamClient({
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* <div className="section-breadcrumb">
-        <span>{data.company.name}</span>
-        <span>/</span>
-        <strong>Team</strong>
-      </div> */}
+  const handleUpdateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsUpdatingRole(true);
+    try {
+      const response = await fetch(`/api/admin/team/users/${editingUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: editingUser.role })
+      });
+      const resData = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(resData.message || "Failed to update role");
+      setEditUser(null);
+      startRefreshTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to update role");
+      console.error(error);
+    } finally {
+      setIsUpdatingRole(false);
+    }
+  };
 
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/team/users/${deletingUser.id}`, {
+        method: "DELETE"
+      });
+      const resData = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(resData.message || "Failed to delete user");
+      setDeletingUser(null);
+      startRefreshTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to delete user");
+      console.error(error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className={cx("space-y-6", isRefreshing && "opacity-60 pointer-events-none transition-opacity")}>
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
           <h1 className="page-title">Team management</h1>
@@ -198,17 +262,11 @@ export function TeamClient({
         </div>
       </div>
 
-      {/* <div className="page-tabs">
-        <span className="page-tab page-tab-active">Members</span>
-        <span className="page-tab">Groups</span>
-        <span className="page-tab">Roles</span>
-        <span className="page-tab">Access requests</span>
-      </div> */}
-
       <Card title="Workspace users" eyebrow={`${rows.length} active seats`}>
         <Table<TeamRow> columns={columns} data={rows} pageSize={8} emptyCopy="No tenant users were found for this workspace yet." />
       </Card>
 
+      {/* Add User Modal */}
       <Modal
         open={modalOpen}
         onClose={() => {
@@ -257,12 +315,80 @@ export function TeamClient({
             <button
               type="submit"
               disabled={isSaving}
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-orange-500 to-amber-600 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="gitlab-button-primary h-11"
             >
               {isSaving ? "Saving..." : "Create user"}
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Edit Role Modal */}
+      <Modal
+        open={Boolean(editingUser)}
+        onClose={() => setEditUser(null)}
+        title="Edit User Role"
+        description={`Update permissions for ${editingUser?.name}`}
+      >
+        <form onSubmit={handleUpdateRole} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-300">Role</label>
+            <select
+              value={editingUser?.role}
+              onChange={(e) => setEditUser({ ...editingUser!, role: e.target.value })}
+              className="input-surface w-full"
+            >
+              <option value="admin">Admin</option>
+              <option value="user">User</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setEditUser(null)}
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdatingRole}
+              className="gitlab-button-primary h-11"
+            >
+              {isUpdatingRole ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Role"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete User Modal */}
+      <Modal
+        open={Boolean(deletingUser)}
+        onClose={() => setDeletingUser(null)}
+        title="Delete User"
+        description={`Are you sure you want to delete ${deletingUser?.name}?`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">
+            This action is permanent and will remove all access for this user immediately.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDeletingUser(null)}
+              className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+              className="flex h-11 items-center justify-center rounded-2xl bg-red-500 px-4 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete User"}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

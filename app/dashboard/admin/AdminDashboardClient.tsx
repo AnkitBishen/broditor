@@ -71,7 +71,7 @@ export function AdminDashboardClient({
         <div className="space-y-3">
           <div className="flex items-center gap-4">
             <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[18px] bg-[#f4f5f7] text-2xl font-bold text-[#fc6f41]">
-              BA
+              Bro
             </div>
             <div className="space-y-2">
               <h1 className="page-title">{data.company.name}</h1>

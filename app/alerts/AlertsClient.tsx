@@ -39,11 +39,11 @@ export function AlertsClient({
   return (
     <div className="space-y-6">
       <div className="space-y-5">
-        <div className="section-breadcrumb">
+        {/* <div className="section-breadcrumb">
           <span>Browser Audit</span>
           <span>/</span>
           <strong>Alerts</strong>
-        </div>
+        </div> */}
         <div className="space-y-3">
           <h1 className="page-title">Alert stream</h1>
           <p className="page-copy max-w-3xl">
@@ -51,12 +51,12 @@ export function AlertsClient({
             first.
           </p>
         </div>
-        <div className="page-tabs">
+        {/* <div className="page-tabs">
           <span className="page-tab page-tab-active">Open alerts</span>
           <span className="page-tab">Assigned</span>
           <span className="page-tab">Resolved</span>
           <span className="page-tab">Dismissed</span>
-        </div>
+        </div> */}
       </div>
 
       <Card
