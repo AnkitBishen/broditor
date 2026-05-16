@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSessionToken } from "@/lib/auth";
+import { apiRequestAsCurrentUser } from "@/lib/server-api";
 import { verifySessionToken } from "@/lib/token";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api";
