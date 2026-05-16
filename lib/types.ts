@@ -20,7 +20,7 @@ export type SessionUser = {
   companyId: string;
   companyName: string;
   avatar: string;
-  createdAt: string;
+  createdAt?: string;
 };
 
 export type TeamMember = {
