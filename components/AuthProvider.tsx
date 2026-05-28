@@ -22,6 +22,26 @@ export function AuthProvider({
     setUser(initialUser);
   }, [initialUser]);
 
+  // Hydrate full user profile from the backend.
+  // The JWT only carries minimal claims (userId, role, org_id), so fields like
+  // name, email, and companyName are empty after token verification. This
+  // effect fetches the complete profile from /api/session/me on mount.
+  useEffect(() => {
+    if (!initialUser) return;
+
+    let cancelled = false;
+
+    api.me().then((fullUser) => {
+      if (!cancelled && fullUser) {
+        setUser(fullUser);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialUser]);
+
   const value: AuthContextValue = {
     user,
     isAuthenticated: Boolean(user),

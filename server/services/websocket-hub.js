@@ -75,17 +75,25 @@ function createWebsocketHub(server, handlers = {}) {
       if (url.pathname === "/events/live") {
         addClient(extensionClients, orgId, ws);
         ws.on("message", (message) => {
+          console.log(`[WS SERVER] Received raw live event message for org ${orgId}:`, message.toString().slice(0, 1000));
           try {
             const payload = JSON.parse(message.toString());
+            const resolvedDeviceId = payload.deviceId ?? payload.device_id ?? payload.event?.device_id ?? payload.event?.deviceId ?? null;
+            const resolvedEvent = payload.event ?? payload;
+
+            console.log(`[WS SERVER] Processing parsed message: deviceId: ${resolvedDeviceId}, event type: ${resolvedEvent?.event_type || resolvedEvent?.eventType || 'none'}`);
+
             handlers.onRiskEvent?.({
               orgId,
               tokenType: ws.tokenType,
               role: ws.role,
-              deviceId: payload.deviceId ?? payload.device_id ?? null,
-              event: payload.event ?? payload,
+              deviceId: resolvedDeviceId,
+              event: resolvedEvent,
               userToken: payload.userToken ?? null
             });
-          } catch {}
+          } catch (err) {
+            console.error("[WS SERVER] Failed to parse or process incoming live event:", err);
+          }
         });
       } else {
         addClient(dashboardClients, orgId, ws);
@@ -97,7 +105,7 @@ function createWebsocketHub(server, handlers = {}) {
 
   return {
     broadcastAlert(orgId, alert) {
-      broadcast(dashboardClients, orgId, { type: "alert.created", payload: alert });
+      broadcast(dashboardClients, orgId, { type: "NEW_ALERT", alert });
     },
     broadcastRiskEvent(orgId, event) {
       broadcast(dashboardClients, orgId, { type: "event.risk", payload: event });

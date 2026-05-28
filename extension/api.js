@@ -2,6 +2,7 @@ import { getCachedManagedConfig } from "./config.js";
 import {
   getAuthToken,
   getUserToken,
+  getUserRefreshToken,
   getBlocklist,
   getOrCreateDeviceId,
   getOrgSettings,
@@ -9,6 +10,7 @@ import {
   removeAcknowledgedEvents,
   setAuthToken,
   setUserToken,
+  setUserRefreshToken,
   setBlocklist,
   setOrgSettings
 } from "./storage.js";
@@ -20,19 +22,80 @@ function getPlatformSnapshot() {
   return { browser, os };
 }
 
+export async function refreshUserTokenCall() {
+  const config = await getCachedManagedConfig();
+  const refreshToken = await getUserRefreshToken();
+  if (!refreshToken) {
+    throw new Error("No refresh token available.");
+  }
+
+  const response = await fetch(`${config.apiEndpoint}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken })
+  });
+
+  if (!response.ok) {
+    // If the refresh token fails, clear all user tokens
+    await setUserToken(null);
+    await setUserRefreshToken(null);
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  const data = await response.json();
+  await setUserToken(data.token);
+  if (data.refreshToken) {
+    await setUserRefreshToken(data.refreshToken);
+  }
+  return data.token;
+}
+
 async function apiRequest(path, init = {}) {
   const config = await getCachedManagedConfig();
   const token = await getAuthToken();
   const userToken = await getUserToken();
-  const response = await fetch(`${config.apiEndpoint}${path}`, {
+  
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(userToken ? { "X-User-Token": userToken } : {}),
+    ...(init.headers || {})
+  };
+
+  let response = await fetch(`${config.apiEndpoint}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(userToken ? { "X-User-Token": userToken } : {}),
-      ...(init.headers || {})
-    }
+    headers
   });
+
+  if (response.status === 401) {
+    const data = await response.json().catch(() => ({}));
+    if (data.error === "TOKEN_EXPIRED") {
+      try {
+        const freshUserToken = await refreshUserTokenCall();
+        if (freshUserToken) {
+          const retryHeaders = {
+            ...headers,
+            "X-User-Token": freshUserToken
+          };
+          response = await fetch(`${config.apiEndpoint}${path}`, {
+            ...init,
+            headers: retryHeaders
+          });
+          
+          if (!response.ok) {
+            const retryData = await response.json().catch(() => ({}));
+            throw new Error(retryData.message || `Request failed with status ${response.status}`);
+          }
+          return response.json();
+        }
+      } catch (err) {
+        console.error("Token refresh failed:", err.message);
+        throw new Error("Session expired. Please log in again.");
+      }
+    }
+    
+    throw new Error(data.message || `Request failed with status ${response.status}`);
+  }
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -57,6 +120,9 @@ export async function login(email, password) {
   });
 
   await setUserToken(data.token);
+  if (data.refreshToken) {
+    await setUserRefreshToken(data.refreshToken);
+  }
   return data;
 }
 

@@ -53,6 +53,15 @@ export async function setUserToken(token) {
   await chrome.storage.local.set({ [STORAGE_KEYS.userToken]: token });
 }
 
+export async function getUserRefreshToken() {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.userRefreshToken);
+  return stored[STORAGE_KEYS.userRefreshToken] ?? null;
+}
+
+export async function setUserRefreshToken(token) {
+  await chrome.storage.local.set({ [STORAGE_KEYS.userRefreshToken]: token });
+}
+
 export async function getBlocklist() {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.blocklist);
   return Array.isArray(stored[STORAGE_KEYS.blocklist]) ? stored[STORAGE_KEYS.blocklist] : [];

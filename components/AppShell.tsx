@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
+import { AlertToaster } from "@/components/AlertToaster";
 import { cx } from "@/lib/utils";
 
 const publicRoutes = ["/", "/about-us", "/docs", "/help", "/pricing", "/login", "/register"];
@@ -51,6 +52,8 @@ export function AppShell({
           </main>
         </div>
       </div>
+
+      <AlertToaster />
     </div>
   );
 }

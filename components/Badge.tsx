@@ -15,6 +15,8 @@ type BadgeVariant =
   | "role-manager"
   | "role-viewer";
 
+type BadgeSize = "sm" | "md" | "lg";
+
 const variants: Record<BadgeVariant, string> = {
   neutral: "border-white/10 bg-[#3e3c47] text-slate-100",
   info: "border-sky-500/40 bg-sky-500/18 text-sky-100",
@@ -27,19 +29,28 @@ const variants: Record<BadgeVariant, string> = {
   "role-viewer": "border-slate-500/40 bg-slate-500/18 text-slate-100"
 };
 
+const sizes: Record<BadgeSize, string> = {
+  sm: "px-2 py-0.5 text-[10px]",
+  md: "px-2.5 py-1 text-xs",
+  lg: "px-3 py-1.5 text-sm"
+};
+
 export function Badge({
   children,
   variant = "neutral",
+  size = "md",
   className
 }: {
   children: ReactNode;
   variant?: BadgeVariant;
+  size?: BadgeSize;
   className?: string;
 }) {
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium leading-none tracking-wide",
+        "inline-flex items-center rounded-full border font-medium leading-none tracking-wide",
+        sizes[size],
         variants[variant],
         className
       )}

@@ -10,7 +10,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 
 const { requireAdmin, requireUserOrAdmin, verifyIngestionToken, verifyToken, decodeToken } = require("./auth-middleware");
-const { runAlertPipeline } = require("./services/alert-engine");
+const { runAlertPipeline, checkExtensionDisabled } = require("./services/alert-engine");
 const { deriveCategory, deriveDomain, deriveRiskLevel } = require("./services/enrichment");
 const { createWebsocketHub } = require("./services/websocket-hub");
 const { createStore } = require("./store");
@@ -23,6 +23,9 @@ const app = express();
 
 app.use(express.json({ limit: "2mb" }));
 app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    console.log(`[REQUEST] ${req.method} ${req.path}`);
+  }
   res.header("Access-Control-Allow-Origin", "http://localhost:3000");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
@@ -67,14 +70,24 @@ function issueUserToken(record) {
       userId: record.id,
       role: record.role,
       org_id: record.org_id,
-      company_id: record.org_id,
-      org_name: record.org_name,
-      company_name: record.org_name,
       email: record.email,
-      full_name: record.full_name
+      full_name: record.full_name,
+      company_id: record.org_id,
+      company_name: record.org_name
     },
     API_SECRET,
     { expiresIn: "1d" }
+  );
+}
+
+function issueUserRefreshToken(record) {
+  return jwt.sign(
+    {
+      token_type: "refresh",
+      userId: record.id
+    },
+    API_SECRET,
+    { expiresIn: "30d" }
   );
 }
 
@@ -313,6 +326,20 @@ async function startServer() {
   const server = createServer(app);
 
   async function processEvents({ orgId, employeeId = null, deviceId = null, incomingEvents = [] }) {
+    if (!employeeId && deviceId) {
+      try {
+        const devRes = await store.pool.query(
+          "SELECT employee_id FROM devices WHERE id = $1 AND org_id = $2 LIMIT 1",
+          [deviceId, orgId]
+        );
+        if (devRes.rows.length > 0 && devRes.rows[0].employee_id) {
+          employeeId = devRes.rows[0].employee_id;
+        }
+      } catch (err) {
+        console.error("Failed to query employee_id from devices in processEvents:", err);
+      }
+    }
+    // console.log("process envent employeeid", employeeId)
     if (!incomingEvents.length) {
       return {
         acknowledgedIds: [],
@@ -323,6 +350,7 @@ async function startServer() {
     }
 
     const blocklist = await store.getBlocklist(orgId);
+    // console.log(`[SERVER] Blocklist loaded for org ${orgId}. Size: ${blocklist.length}`);
     const blocklistMap = new Map(
       blocklist
         .filter((entry) => entry?.domain)
@@ -349,11 +377,13 @@ async function startServer() {
     const pending = normalized.filter((event) => !existingIds.has(event.id));
 
     const inserted = await store.insertEvents(pending);
+    console.log(`[SERVER] Inserted ${inserted.length} new events. Processing alerts...`);
     const alerts = [];
 
     for (const insertedEvent of inserted) {
-      const blocklistMatch = insertedEvent.domain ? blocklistMap.get(String(insertedEvent.domain).toLowerCase()) ?? null : null;
-      const created = await runAlertPipeline(store, hub, insertedEvent, blocklistMatch);
+      const eventDomain = String(insertedEvent.domain || "").trim().toLowerCase();
+      const blocklistMatch = eventDomain ? blocklistMap.get(eventDomain) ?? null : null;
+      const created = await runAlertPipeline(store, hub, insertedEvent, blocklistMatch, employeeId);
       alerts.push(...created);
       if (insertedEvent.risk_level === "high" || insertedEvent.risk_level === "critical") {
         hub.broadcastRiskEvent(insertedEvent.org_id, insertedEvent);
@@ -373,15 +403,25 @@ async function startServer() {
 
   const hub = createWebsocketHub(server, {
     onRiskEvent: ({ orgId, deviceId, event, userToken }) => {
+      console.log(`[WS HUB] onRiskEvent triggered: orgId=${orgId}, deviceId=${deviceId}, hasToken=${Boolean(userToken)}`);
       let employeeId = null;
       if (userToken) {
         try {
           const decoded = decodeToken(userToken);
           if (decoded.userId) {
             employeeId = decoded.userId;
+            console.log(`[WS HUB] Decoded employeeId from token: ${employeeId}`);
           }
         } catch (err) {
           console.error(`Invalid user token in WebSocket risk event: ${err.message}`);
+        }
+      }
+
+      // Extract deviceId from event if not provided at top-level
+      if (!deviceId && event) {
+        deviceId = event.device_id || event.deviceId || null;
+        if (deviceId) {
+          console.log(`[WS HUB] Extracted deviceId from event: ${deviceId}`);
         }
       }
 
@@ -390,9 +430,13 @@ async function startServer() {
         employeeId,
         deviceId,
         incomingEvents: [event]
-      }).catch((error) => {
-        console.error(`Risk event processing failed: ${error.message}`);
-      });
+      })
+        .then((result) => {
+          console.log(`[WS HUB] Live risk event processed. Inserted: ${result.insertedCount}, Alerts Created: ${result.alertsCreated}`);
+        })
+        .catch((error) => {
+          console.error(`Risk event processing failed: ${error.message}`);
+        });
     }
   });
 
@@ -422,6 +466,21 @@ async function startServer() {
           name: parsed.organization,
           extensionApiKeyHash
         });
+
+        // Seed default blocklist entries
+        const defaultBlocks = [
+          { domain: "youtube.com", category: "Entertainment" },
+          { domain: "chatgpt.com", category: "AI Tools" },
+          { domain: "instagram.com", category: "Social Media" },
+          { domain: "gambling.com", category: "Gambling" }
+        ];
+        for (const item of defaultBlocks) {
+          try {
+            await store.addBlocklistEntry(organization.id, item);
+          } catch (err) {
+            console.error(`Failed to seed default blocklist item ${item.domain} for org ${organization.id}:`, err);
+          }
+        }
       }
 
       const userCount = await store.countUsersByOrganization(organization.id);
@@ -484,6 +543,7 @@ async function startServer() {
   });
 
   app.post("/api/auth/login", async (req, res) => {
+    console.log(`[AUTH] Login attempt for email: ${req.body.email}`);
     const parsed = validateLoginInput(req.body);
     if (parsed.error) {
       return res.status(400).json({ message: parsed.error });
@@ -502,6 +562,7 @@ async function startServer() {
 
       return res.json({
         token: issueUserToken(record),
+        refreshToken: issueUserRefreshToken(record),
         user: serializeSessionUser(record)
       });
     } catch (error) {
@@ -509,7 +570,34 @@ async function startServer() {
     }
   });
 
+  app.post("/api/auth/refresh", async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ message: "refreshToken is required." });
+    }
+
+    try {
+      const decoded = decodeToken(refreshToken);
+      if (decoded.token_type !== "refresh") {
+        return res.status(401).json({ message: "Invalid token type." });
+      }
+
+      const record = await store.getUserWithOrganizationById(decoded.userId);
+      if (!record) {
+        return res.status(401).json({ message: "User not found." });
+      }
+
+      return res.json({
+        token: issueUserToken(record),
+        refreshToken: issueUserRefreshToken(record)
+      });
+    } catch (error) {
+      return res.status(401).json({ message: "Invalid or expired refresh token.", detail: error.message });
+    }
+  });
+
   app.post("/api/auth/verify", async (req, res) => {
+    console.log(`[AUTH] Extension verification attempt for org: ${req.body.org_id}`);
     const orgId = String(req.body.org_id || "").trim();
     const apiKey = String(req.body.api_key || "").trim();
 
@@ -753,6 +841,7 @@ async function startServer() {
   });
 
   app.post("/api/events/batch", verifyIngestionToken, async (req, res) => {
+    // console.log(`[INGESTION] Received batch from device: ${req.user.device_id || 'unknown'}`);
     const events = Array.isArray(req.body.events) ? req.body.events : [];
     if (events.length === 0) {
       return res.status(400).json({ message: "events array is required." });
@@ -760,6 +849,7 @@ async function startServer() {
 
     let employeeId = req.user.userId ?? null;
     const userToken = req.headers["x-user-token"];
+    // console.log("process events user token", userToken)
     if (userToken) {
       try {
         const decoded = decodeToken(userToken);
@@ -768,9 +858,14 @@ async function startServer() {
         }
       } catch (err) {
         console.error(`Invalid user token in events batch: ${err.message}`);
+        return res.status(401).json({
+          message: "Invalid or expired user session.",
+          error: "TOKEN_EXPIRED",
+          detail: err.message
+        });
       }
     }
-
+    // console.log("process events employeeid", employeeId)
     try {
       const result = await processEvents({
         orgId: req.user.org_id,
@@ -895,7 +990,30 @@ async function startServer() {
       if (!alert) {
         return res.status(404).json({ message: "Alert not found." });
       }
-      return res.json({ alert });
+
+      // If assigning to me via status change
+      if (status === 'assigned') {
+        await store.assignAlert(req.user.org_id, req.params.id, req.user.userId);
+      }
+
+      // Query fully joined alert to prevent losing employee_name / email metadata in UI
+      const joined = await store.pool.query(
+        `select a.*, 
+                u.full_name as employee_name, 
+                u.email as employee_email,
+                assignee.full_name as assigned_to_name,
+                d.browser, d.os, d.id as device_id,
+                e.url, e.domain, e.category, e.metadata as event_metadata
+         from alerts a
+         left join events e on e.id = a.event_id
+         left join devices d on d.id = COALESCE(a.device_id, e.device_id)
+         left join users u on u.id = COALESCE(a.employee_id, e.employee_id, d.employee_id)
+         left join users assignee on assignee.id = a.assigned_to
+         where a.id = $1 and a.org_id = $2`,
+        [req.params.id, req.user.org_id]
+      );
+
+      return res.json({ alert: joined.rows[0] });
     } catch (error) {
       return res.status(500).json({ message: "Unable to update alert.", detail: error.message });
     }
@@ -912,24 +1030,138 @@ async function startServer() {
       if (!alert) {
         return res.status(404).json({ message: "Alert not found." });
       }
-      return res.json({ alert });
+
+      // Query fully joined alert
+      const joined = await store.pool.query(
+        `select a.*, 
+                u.full_name as employee_name, 
+                u.email as employee_email,
+                assignee.full_name as assigned_to_name,
+                d.browser, d.os, d.id as device_id,
+                e.url, e.domain, e.category, e.metadata as event_metadata
+         from alerts a
+         left join events e on e.id = a.event_id
+         left join devices d on d.id = COALESCE(a.device_id, e.device_id)
+         left join users u on u.id = COALESCE(a.employee_id, e.employee_id, d.employee_id)
+         left join users assignee on assignee.id = a.assigned_to
+         where a.id = $1 and a.org_id = $2`,
+        [req.params.id, req.user.org_id]
+      );
+
+      return res.json({ alert: joined.rows[0] });
     } catch (error) {
       return res.status(500).json({ message: "Unable to assign alert.", detail: error.message });
     }
   });
 
+  app.get("/api/alerts/:id", verifyToken, requireUserOrAdmin, async (req, res) => {
+    try {
+      const result = await store.pool.query(
+        `select a.*, 
+                u.full_name as employee_name, 
+                u.email as employee_email,
+                assignee.full_name as assigned_to_name,
+                d.browser, d.os, d.id as device_id,
+                e.url, e.domain, e.category, e.metadata as event_metadata
+         from alerts a
+         left join events e on e.id = a.event_id
+         left join devices d on d.id = COALESCE(a.device_id, e.device_id)
+         left join users u on u.id = COALESCE(a.employee_id, e.employee_id, d.employee_id)
+         left join users assignee on assignee.id = a.assigned_to
+         where a.id = $1 and a.org_id = $2`,
+        [req.params.id, req.user.org_id]
+      );
+
+      const alert = result.rows[0];
+      if (!alert) {
+        return res.status(404).json({ message: "Alert not found." });
+      }
+
+      // Fetch timeline (30 mins before and after)
+      let timeline = [];
+      if (alert.event_id && alert.employee_id) {
+        timeline = await store.getEmployeeSession(req.user.org_id, alert.employee_id, alert.event_id, 30);
+      }
+
+      // Fetch related alerts (same employee or same domain)
+      const related = await store.pool.query(
+        `select id, alert_type, severity, status, triggered_at, trigger_reason
+         from alerts
+         where org_id = $1 
+         and id != $2
+         and (employee_id = $3 or trigger_reason like $4)
+         order by triggered_at desc
+         limit 5`,
+        [req.user.org_id, alert.id, alert.employee_id, `%${alert.domain}%`]
+      );
+
+      // Fetch employee risk context
+      const riskContext = await store.pool.query(
+        `select count(*)::int as total_alerts,
+                count(*) filter (where status != 'resolved')::int as open_alerts,
+                (select count(*) from events where employee_id = $1 and risk_level = 'high')::int as high_risk_events
+         from alerts
+         where employee_id = $1`,
+        [alert.employee_id]
+      );
+
+      return res.json({
+        alert,
+        timeline: timeline.map(e => ({
+          id: e.id,
+          event_type: e.event_type,
+          url: e.url,
+          domain: e.domain,
+          occurred_at: e.occurred_at,
+          category: e.category,
+          risk_level: e.risk_level,
+          metadata: e.metadata
+        })),
+        relatedAlerts: related.rows,
+        employeeRisk: riskContext.rows[0] || { total_alerts: 0, open_alerts: 0, high_risk_events: 0 }
+      });
+    } catch (error) {
+      return res.status(500).json({ message: "Unable to load alert details.", detail: error.message });
+    }
+  });
+
   app.post("/api/alerts/:id/note", verifyToken, requireAdmin, async (req, res) => {
-    const note = String(req.body.note || "").trim();
-    if (!note) {
+    const message = String(req.body.note || "").trim();
+    if (!message) {
       return res.status(400).json({ message: "note is required." });
     }
 
     try {
-      const alert = await store.addAlertNote(req.user.org_id, req.params.id, note);
+      const noteObj = {
+        admin_name: req.user.full_name || "Admin",
+        admin_id: req.user.userId,
+        timestamp: new Date().toISOString(),
+        message
+      };
+
+      const alert = await store.addAlertNote(req.user.org_id, req.params.id, JSON.stringify(noteObj));
       if (!alert) {
         return res.status(404).json({ message: "Alert not found." });
       }
-      return res.json({ alert });
+
+      // Query fully joined alert
+      const joined = await store.pool.query(
+        `select a.*, 
+                u.full_name as employee_name, 
+                u.email as employee_email,
+                assignee.full_name as assigned_to_name,
+                d.browser, d.os, d.id as device_id,
+                e.url, e.domain, e.category, e.metadata as event_metadata
+         from alerts a
+         left join events e on e.id = a.event_id
+         left join devices d on d.id = COALESCE(a.device_id, e.device_id)
+         left join users u on u.id = COALESCE(a.employee_id, e.employee_id, d.employee_id)
+         left join users assignee on assignee.id = a.assigned_to
+         where a.id = $1 and a.org_id = $2`,
+        [req.params.id, req.user.org_id]
+      );
+
+      return res.json({ alert: joined.rows[0] });
     } catch (error) {
       return res.status(500).json({ message: "Unable to add alert note.", detail: error.message });
     }
@@ -1133,6 +1365,19 @@ async function startServer() {
 
   server.listen(PORT, () => {
     console.log(`Audit API listening on http://localhost:${PORT} (database: postgres, websockets: enabled)`);
+
+    // Run extension disabled check once immediately on startup
+    console.log("[SCHEDULER] Triggering initial checkExtensionDisabled sweep on startup...");
+    checkExtensionDisabled(store, hub).catch((err) => {
+      console.error("Initial extension disabled check failed on startup:", err);
+    });
+
+    // Run extension disabled check every 15 minutes
+    setInterval(() => {
+      checkExtensionDisabled(store, hub).catch((err) => {
+        console.error("Extension disabled check failed:", err);
+      });
+    }, 15 * 60 * 1000);
   });
 }
 

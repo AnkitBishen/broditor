@@ -13,16 +13,23 @@ function deriveDomain(rawUrl) {
 function deriveCategory(domain = "", eventType = "", metadata = {}) {
   const normalized = String(domain || "").toLowerCase();
 
+  const SOCIAL_DOMAINS = ["facebook.com", "instagram.com", "twitter.com", "x.com", "reddit.com", "linkedin.com", "tiktok.com"];
+  const VIDEO_DOMAINS = ["youtube.com", "netflix.com", "hotstar.com", "primevideo.com", "hulu.com", "vimeo.com"];
+
+  if (SOCIAL_DOMAINS.some(d => normalized === d || normalized.endsWith(`.${d}`))) {
+    return "social";
+  }
+
+  if (VIDEO_DOMAINS.some(d => normalized === d || normalized.endsWith(`.${d}`))) {
+    return "video";
+  }
+
   if (metadata.download_bytes) {
     return "download";
   }
 
-  if (normalized.includes("github") || normalized.includes("gitlab") || normalized.includes("jira")) {
+  if (normalized.includes("github") || normalized.includes("gitlab") || normalized.includes("jira") || normalized.includes("confluence") || normalized.includes("slack") || normalized.includes("teams") || normalized.includes("zoom")) {
     return "productive";
-  }
-
-  if (normalized.includes("slack") || normalized.includes("teams") || normalized.includes("zoom")) {
-    return "collaboration";
   }
 
   if (normalized.includes("drive.google") || normalized.includes("dropbox") || normalized.includes("wetransfer")) {

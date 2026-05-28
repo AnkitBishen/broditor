@@ -399,12 +399,12 @@ class PostgresStore {
     return result.rows[0]?.count ?? 0;
   }
 
-  async createAlert({ orgId, employeeId = null, eventId = null, alertType, severity, triggerReason, assignedTo = null, note = null }) {
+  async createAlert({ orgId, employeeId = null, eventId = null, deviceId = null, alertType, severity, triggerReason, assignedTo = null, note = null }) {
     const result = await this.pool.query(
-      `insert into alerts (org_id, employee_id, event_id, alert_type, severity, trigger_reason, assigned_to, note)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
+      `insert into alerts (org_id, employee_id, event_id, device_id, alert_type, severity, trigger_reason, assigned_to, note)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        returning *`,
-      [orgId, employeeId, eventId, alertType, severity, triggerReason, assignedTo, note]
+      [orgId, employeeId, eventId, deviceId, alertType, severity, triggerReason, assignedTo, note]
     );
     return result.rows[0];
   }
@@ -413,7 +413,9 @@ class PostgresStore {
     const result = await this.pool.query(
       `select a.*, u.full_name as employee_name
        from alerts a
-       left join users u on u.id = a.employee_id
+       left join events e on e.id = a.event_id
+       left join devices d on d.id = COALESCE(a.device_id, e.device_id)
+       left join users u on u.id = COALESCE(a.employee_id, e.employee_id, d.employee_id)
        where a.org_id = $1
        order by a.triggered_at desc
        limit $2`,
@@ -449,7 +451,9 @@ class PostgresStore {
     const result = await this.pool.query(
       `select a.*, u.full_name as employee_name, assignee.full_name as assigned_to_name
        from alerts a
-       left join users u on u.id = a.employee_id
+       left join events e on e.id = a.event_id
+       left join devices d on d.id = COALESCE(a.device_id, e.device_id)
+       left join users u on u.id = COALESCE(a.employee_id, e.employee_id, d.employee_id)
        left join users assignee on assignee.id = a.assigned_to
        where ${clauses.join(" and ")}
        order by a.triggered_at desc

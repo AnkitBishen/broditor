@@ -146,5 +146,9 @@ vite.config.ts.timestamp-*
 .vscode/
 graphify-out/
 extension_/
+extension-firefox/
 .agent/
 .gemini/
+.antigravitycli/
+scratch/
+plans/

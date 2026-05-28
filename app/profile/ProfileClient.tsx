@@ -88,11 +88,11 @@ export default function ProfileClient({ initialUser }: { initialUser: SessionUse
 
   return (
     <div className={cx("space-y-6", isPending && "opacity-60 pointer-events-none transition-opacity")}>
-      <div className="section-breadcrumb">
+      {/* <div className="section-breadcrumb">
         <span>Broditor</span>
         <span>/</span>
         <strong>Profile</strong>
-      </div>
+      </div> */}
 
       <div className="glass-panel overflow-hidden p-6 md:p-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-center">

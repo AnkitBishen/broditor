@@ -11,11 +11,13 @@ const secret = new TextEncoder().encode(JWT_SECRET);
 
 type TokenPayload = {
   userId: string;
-  email: string;
   role: AuthRole;
-  company_id: string;
-  company_name: string;
-  full_name: string;
+  org_id: string;
+  // Optional fields kept for backward compatibility with existing tokens
+  email?: string;
+  company_id?: string;
+  company_name?: string;
+  full_name?: string;
 };
 
 export async function verifySessionToken(token?: string | null): Promise<SessionUser | null> {
@@ -27,14 +29,18 @@ export async function verifySessionToken(token?: string | null): Promise<Session
     const { payload } = await jwtVerify(token, secret);
     const claims = payload as unknown as TokenPayload;
 
+    // The full user profile (name, email, companyName) is hydrated from the
+    // backend /api/me endpoint. The token only carries the minimal identity
+    // needed for routing and authorization decisions.
+    const name = claims.full_name || "";
     return {
       id: claims.userId,
-      email: claims.email,
-      name: claims.full_name,
+      email: claims.email || "",
+      name,
       role: claims.role,
-      companyId: claims.company_id,
-      companyName: claims.company_name,
-      avatar: initials(claims.full_name)
+      companyId: claims.company_id || claims.org_id,
+      companyName: claims.company_name || "",
+      avatar: name ? initials(name) : ""
     };
   } catch {
     return null;

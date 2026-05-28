@@ -186,6 +186,7 @@ export default function LoginPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   className="input-surface w-full pl-11"
                   required
+                  suppressHydrationWarning
                 />
               </div>
             </label>
@@ -208,6 +209,7 @@ export default function LoginPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   className="input-surface w-full pl-11"
                   required
+                  suppressHydrationWarning
                 />
               </div>
             </label>
@@ -222,6 +224,7 @@ export default function LoginPage() {
               type="submit"
               disabled={submitting}
               className="inline-flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-orange-500 to-amber-600 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70"
+              suppressHydrationWarning
             >
               {submitting ? "Signing in..." : "Sign in"}
             </button>

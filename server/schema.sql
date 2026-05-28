@@ -180,12 +180,14 @@ create table if not exists alerts (
   org_id uuid not null references organizations(id) on delete cascade,
   employee_id uuid references users(id) on delete set null,
   event_id uuid,
+  device_id uuid references devices(id) on delete set null,
   alert_type text not null,
   severity text not null,
   status text not null default 'open',
   trigger_reason text not null,
   assigned_to uuid references users(id) on delete set null,
   note text,
+  occurrence_count integer not null default 1,
   triggered_at timestamptz not null default now(),
   resolved_at timestamptz
 );

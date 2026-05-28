@@ -33,6 +33,9 @@ type MonitoringSettings = {
   sync_interval_minutes: number;
   blocklist_sync_minutes: number;
   incognito_monitoring: boolean;
+  large_download_mb?: number;
+  work_hours_start?: string;
+  work_hours_end?: string;
 };
 
 export default function SettingsClient({ initialData }: { initialData: any }) {
@@ -51,7 +54,10 @@ export default function SettingsClient({ initialData }: { initialData: any }) {
     idle_threshold_seconds: initialData.settings?.idle_threshold_seconds ?? 300,
     sync_interval_minutes: initialData.settings?.sync_interval_minutes ?? 5,
     blocklist_sync_minutes: initialData.settings?.blocklist_sync_minutes ?? 60,
-    incognito_monitoring: initialData.settings?.incognito_monitoring ?? false
+    incognito_monitoring: initialData.settings?.incognito_monitoring ?? false,
+    large_download_mb: initialData.settings?.large_download_mb ?? 50,
+    work_hours_start: initialData.settings?.work_hours_start ?? "08:00",
+    work_hours_end: initialData.settings?.work_hours_end ?? "19:00"
   });
   const [isUpdatingMonitoring, setIsUpdatingMonitoring] = useState(false);
 
@@ -76,7 +82,10 @@ export default function SettingsClient({ initialData }: { initialData: any }) {
         idle_threshold_seconds: initialData.settings.idle_threshold_seconds ?? 300,
         sync_interval_minutes: initialData.settings.sync_interval_minutes ?? 5,
         blocklist_sync_minutes: initialData.settings.blocklist_sync_minutes ?? 60,
-        incognito_monitoring: initialData.settings.incognito_monitoring ?? false
+        incognito_monitoring: initialData.settings.incognito_monitoring ?? false,
+        large_download_mb: initialData.settings.large_download_mb ?? 50,
+        work_hours_start: initialData.settings.work_hours_start ?? "08:00",
+        work_hours_end: initialData.settings.work_hours_end ?? "19:00"
       });
     }
   }, [initialData]);
@@ -236,11 +245,11 @@ export default function SettingsClient({ initialData }: { initialData: any }) {
 
   return (
     <div className={cx("space-y-6", isPending && "opacity-60 pointer-events-none transition-opacity")}>
-      <div className="section-breadcrumb">
+      {/* <div className="section-breadcrumb">
         <span>Broditor</span>
         <span>/</span>
         <strong>Settings</strong>
-      </div>
+      </div> */}
 
       <h1 className="text-3xl font-semibold tracking-tight text-white">Settings</h1>
 
@@ -316,7 +325,7 @@ export default function SettingsClient({ initialData }: { initialData: any }) {
                       <input
                         type="number"
                         value={monitoring.idle_threshold_seconds}
-                        onChange={(e) => setMonitoring({ ...monitoring, idle_threshold_seconds: parseInt(e.target.value) })}
+                        onChange={(e) => setMonitoring({ ...monitoring, idle_threshold_seconds: parseInt(e.target.value) || 0 })}
                         className="input-surface w-full"
                       />
                     </div>
@@ -325,7 +334,7 @@ export default function SettingsClient({ initialData }: { initialData: any }) {
                       <input
                         type="number"
                         value={monitoring.sync_interval_minutes}
-                        onChange={(e) => setMonitoring({ ...monitoring, sync_interval_minutes: parseInt(e.target.value) })}
+                        onChange={(e) => setMonitoring({ ...monitoring, sync_interval_minutes: parseInt(e.target.value) || 0 })}
                         className="input-surface w-full"
                       />
                     </div>
@@ -334,7 +343,34 @@ export default function SettingsClient({ initialData }: { initialData: any }) {
                       <input
                         type="number"
                         value={monitoring.blocklist_sync_minutes}
-                        onChange={(e) => setMonitoring({ ...monitoring, blocklist_sync_minutes: parseInt(e.target.value) })}
+                        onChange={(e) => setMonitoring({ ...monitoring, blocklist_sync_minutes: parseInt(e.target.value) || 0 })}
+                        className="input-surface w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-400">Large Download Limit (MB)</label>
+                      <input
+                        type="number"
+                        value={monitoring.large_download_mb ?? 50}
+                        onChange={(e) => setMonitoring({ ...monitoring, large_download_mb: parseInt(e.target.value) || 0 })}
+                        className="input-surface w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-400">Work Hours Start</label>
+                      <input
+                        type="time"
+                        value={monitoring.work_hours_start ?? "08:00"}
+                        onChange={(e) => setMonitoring({ ...monitoring, work_hours_start: e.target.value })}
+                        className="input-surface w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-400">Work Hours End</label>
+                      <input
+                        type="time"
+                        value={monitoring.work_hours_end ?? "19:00"}
+                        onChange={(e) => setMonitoring({ ...monitoring, work_hours_end: e.target.value })}
                         className="input-surface w-full"
                       />
                     </div>

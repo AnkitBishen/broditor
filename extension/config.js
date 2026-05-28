@@ -1,6 +1,7 @@
 export const STORAGE_KEYS = {
   authToken: "auth_token",
   userToken: "user_token",
+  userRefreshToken: "user_refresh_token",
   blocklist: "blocklist",
   deviceId: "device_id",
   eventQueue: "event_queue",

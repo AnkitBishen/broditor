@@ -24,7 +24,8 @@ function verifyToken(req, res, next) {
       tokenType: payload.token_type ?? "user",
       userId: payload.userId ?? null,
       role: payload.role ?? null,
-      org_id: payload.org_id ?? payload.company_id ?? null
+      org_id: payload.org_id ?? payload.company_id ?? null,
+      full_name: payload.full_name ?? null
     };
     return next();
   } catch {
